@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Writing Dashboard — Edit Prompts</title>
+  <style>
+    body{font-family:Inter,system-ui,Arial;margin:18px;background:#f4f7fb;color:#071023}
+    .card{max-width:1100px;margin:0 auto;background:white;padding:18px;border-radius:12px;box-shadow:0 10px 40px rgba(11,24,48,0.06)}
+    h1{margin:0 0 6px}
+    .muted{color:#6b7280;font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:14px}
+    .panel{padding:12px;border-radius:10px;background:#fbfeff;border:1px solid #e6eef8}
+    textarea{width:100%;min-height:70px;padding:8px;border-radius:8px;border:1px solid #e6eef8;resize:vertical}
+    .row{display:flex;gap:8px;align-items:center;margin-top:8px}
+    .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer;transition:transform .12s}
+    .btn.primary{background:linear-gradient(90deg,#0b6cff,#0066ff);color:white;box-shadow:0 8px 24px rgba(11,108,255,0.12)}
+    .btn.warn{background:#ff7a7a;color:white}
+    .btn.ghost{background:transparent;border:1px solid #e6eef8}
+    .small{font-size:13px;color:#6b7280}
+    .controls{display:flex;gap:8px;margin-top:12px;align-items:center}
+    .meta{margin-top:10px;color:#555;font-size:13px}
+    .q{margin-bottom:10px;padding:8px;border-radius:8px;background:white;border:1px solid #eef6ff;display:flex;gap:8px}
+    .q textarea{flex:1}
+    .q .tools{display:flex;flex-direction:column;gap:6px}
+    @media (max-width:880px){ .grid{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <h1>Writing Dashboard</h1>
+        <div class="muted">Edit and Publish prompts. Key: <code>writing_prompts_v1</code>. Other tabs will auto-update.</div>
+      </div>
+      <div style="text-align:right">
+        <div class="small">Client ID: <span id="clientId"></span></div>
+        <div style="margin-top:8px">
+          <button id="openWrite" class="btn ghost">Open Writing</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h3>Task list</h3>
+        <div id="tasksList"></div>
+        <div class="row">
+          <button id="addTask" class="btn primary">+ Add Task</button>
+          <button id="resetDefaults" class="btn ghost">Reset defaults</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Preview</h3>
+        <div id="previewArea" style="min-height:180px"></div>
+        <div class="controls">
+          <button id="publishBtn" class="btn primary">Publish to storage</button>
+          <button id="removeKey" class="btn warn">Remove key</button>
+        </div>
+        <div class="meta" id="meta"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Actions</h3>
+        <div style="margin-top:6px" class="small">Edit tasks on the left. Publish will update <code>writing_prompts_v1</code> and notify other tabs.</div>
+        <div class="row" style="margin-top:10px">
+          <button id="exportJson" class="btn ghost">Export JSON</button>
+          <button id="importJson" class="btn ghost">Import JSON</button>
+          <input id="importFile" type="file" accept="application/json" style="display:none"/>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px" class="small">When you publish, a <code>meta.sourceId</code> is added so the dashboard can ignore its own storage events.</div>
+  </div>
+
+<script>
+/* writing-dashboard.html */
+const PROMPTS_KEY = 'writing_prompts_v1';
+const CLIENT_KEY = 'writing_dash_client';
+
+/* default set (same shape as writing.html) */
+const DEFAULT = {
+  tasks: [
+    { title: 'Task 1 — Short response', desc: 'Briefly describe your favourite pastime and why you enjoy it.', minWords: 0 },
+    { title: 'Task 2 — Essay (200+ words)', desc: 'Write an essay about the benefits and drawbacks of living in a large city. Aim for at least 200 words.', minWords: 200 },
+    { title: 'Task 3 — Opinion', desc: 'Do you think technology is improving education? Explain with examples.', minWords: 0 }
+  ],
+  meta: { updatedAt: Date.now() }
+};
+
+/* client id */
+let CLIENT_ID = sessionStorage.getItem(CLIENT_KEY);
+if(!CLIENT_ID){ CLIENT_ID = Math.random().toString(36).slice(2)+Date.now().toString(36); sessionStorage.setItem(CLIENT_KEY, CLIENT_ID); }
+document.getElementById('clientId').textContent = CLIENT_ID;
+
+const tasksList = document.getElementById('tasksList');
+const addTask = document.getElementById('addTask');
+const publishBtn = document.getElementById('publishBtn');
+const previewArea = document.getElementById('previewArea');
+const metaDiv = document.getElementById('meta');
+const openWrite = document.getElementById('openWrite');
+const resetDefaults = document.getElementById('resetDefaults');
+const removeKey = document.getElementById('removeKey');
+const exportJson = document.getElementById('exportJson');
+const importJsonBtn = document.getElementById('importJson');
+const importFile = document.getElementById('importFile');
+
+function loadStored(){
+  try{
+    const raw = localStorage.getItem(PROMPTS_KEY);
+    if(!raw) return JSON.parse(JSON.stringify(DEFAULT));
+    const parsed = JSON.parse(raw);
+    parsed.tasks = parsed.tasks && parsed.tasks.length ? parsed.tasks : DEFAULT.tasks.slice();
+    parsed.meta = parsed.meta || { updatedAt: Date.now() };
+    return parsed;
+  }catch(e){
+    console.warn('loadStored err', e);
+    return JSON.parse(JSON.stringify(DEFAULT));
+  }
+}
+
+let DATA = loadStored();
+
+function renderList(){
+  tasksList.innerHTML = '';
+  DATA.tasks.forEach((t,i)=>{
+    const wrapper = document.createElement('div'); wrapper.className='q';
+    const ta = document.createElement('textarea'); ta.value = t.title + "\n\n" + t.desc;
+    ta.addEventListener('input', ()=> {
+      // split first line as title, rest as desc heuristically
+      const parts = ta.value.split(/\n/);
+      DATA.tasks[i].title = parts[0] || 'Untitled';
+      DATA.tasks[i].desc = parts.slice(1).join('\n') || '';
+      updatePreview();
+    });
+    const tools = document.createElement('div'); tools.className='tools';
+    const up = document.createElement('button'); up.className='btn ghost'; up.textContent='↑'; up.onclick = ()=> { if(i>0){ swap(i, i-1); renderList(); } };
+    const down = document.createElement('button'); down.className='btn ghost'; down.textContent='↓'; down.onclick = ()=> { if(i < DATA.tasks.length-1){ swap(i, i+1); renderList(); } };
+    const del = document.createElement('button'); del.className='btn warn'; del.textContent='🗑'; del.onclick = ()=> { if(confirm('O`chirasizmi?')){ DATA.tasks.splice(i,1); renderList(); updatePreview(); } };
+    tools.appendChild(up); tools.appendChild(down); tools.appendChild(del);
+    wrapper.appendChild(ta); wrapper.appendChild(tools);
+    tasksList.appendChild(wrapper);
+  });
+  if(DATA.tasks.length===0){
+    const p = document.createElement('div'); p.className='small'; p.textContent='Hech qanday vazifa yo‘q — qo‘shing.'; tasksList.appendChild(p);
+  }
+  updatePreview();
+}
+
+function swap(a,b){ const t=DATA.tasks[a]; DATA.tasks[a]=DATA.tasks[b]; DATA.tasks[b]=t; }
+
+addTask.addEventListener('click', ()=> {
+  DATA.tasks.push({ title:'New Task', desc:'Describe...' , minWords:0 });
+  renderList();
+});
+
+function updatePreview(){
+  previewArea.innerHTML = '';
+  DATA.tasks.forEach((t,i)=>{
+    const div = document.createElement('div'); div.style.marginBottom='10px';
+    div.innerHTML = `<strong>${escapeHtml(t.title)}</strong><div style="color:#525f7f;margin-top:6px">${escapeHtml(t.desc)}</div>`;
+    previewArea.appendChild(div);
+  });
+  metaDiv.textContent = `Tasks: ${DATA.tasks.length} — last saved: ${DATA.meta && DATA.meta.updatedAt ? new Date(DATA.meta.updatedAt).toLocaleString() : '(never)'}`;
+}
+
+/* publish */
+publishBtn.addEventListener('click', ()=> {
+  DATA.meta = DATA.meta || {};
+  DATA.meta.updatedAt = Date.now();
+  DATA.meta.sourceId = CLIENT_ID;
+  try{
+    localStorage.setItem(PROMPTS_KEY, JSON.stringify(DATA));
+    metaDiv.textContent = `Published at ${new Date(DATA.meta.updatedAt).toLocaleString()} by ${CLIENT_ID}`;
+    alert('Published. Other tabs will update.');
+  }catch(e){ alert('Publish failed: ' + e.message); }
+});
+
+/* reset defaults */
+resetDefaults.addEventListener('click', ()=> {
+  if(!confirm('Defaults qayta o‘rnatilsinmi?')) return;
+  DATA = JSON.parse(JSON.stringify(DEFAULT));
+  DATA.meta = { updatedAt: Date.now(), sourceId: CLIENT_ID };
+  renderList();
+});
+
+/* remove key */
+removeKey.addEventListener('click', ()=> {
+  if(!confirm('LocalStorage key ni oʻchirib tashlamoqchimisiz? (other clients will revert to defaults)')) return;
+  localStorage.removeItem(PROMPTS_KEY);
+  DATA = JSON.parse(JSON.stringify(DEFAULT));
+  DATA.meta = { updatedAt: Date.now(), sourceId: CLIENT_ID };
+  renderList();
+  alert('Key removed.');
+});
+
+/* export/import */
+exportJson.addEventListener('click', ()=> {
+  const data = JSON.stringify(DATA, null, 2);
+  const blob = new Blob([data], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'writing_prompts.json'; a.click();
+  setTimeout(()=> URL.revokeObjectURL(url), 2000);
+});
+importJsonBtn.addEventListener('click', ()=> importFile.click());
+importFile.addEventListener('change', (ev)=>{
+  const f = ev.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=> {
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed.tasks) throw new Error('Invalid format');
+      DATA = parsed;
+      DATA.meta = DATA.meta || { updatedAt: Date.now(), sourceId: CLIENT_ID };
+      renderList();
+      alert('Imported.');
+    }catch(e){ alert('Import failed: ' + e.message); }
+  };
+  reader.readAsText(f);
+});
+
+/* open writing */
+openWrite.addEventListener('click', ()=> {
+  const url = location.origin + location.pathname.replace(/[^/]*$/, '') + 'writing.html';
+  window.open(url, '_blank');
+});
+
+/* on storage event — if other dashboard published, update UI (ignore own) */
+window.addEventListener('storage', (e)=> {
+  if(e.key !== PROMPTS_KEY) return;
+  try{
+    const parsed = JSON.parse(e.newValue || 'null');
+    if(parsed && parsed.meta && parsed.meta.sourceId === CLIENT_ID) return; // our own change
+  }catch(err){}
+  DATA = loadStored();
+  renderList();
+  alert('Prompts updated from another tab. UI refreshed.');
+});
+
+/* init */
+renderList();
+
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+
+</script>
+</body>
+</html>

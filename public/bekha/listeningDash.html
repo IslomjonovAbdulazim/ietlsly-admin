@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard — Listening Editor (Parts)</title>
+  <style>
+    body{font-family:Inter,system-ui,Arial;background:#f4f7fb;margin:18px;color:#061026}
+    .wrap{max-width:1200px;margin:0 auto}
+    .card{background:#fff;padding:18px;border-radius:12px;border:1px solid rgba(8,32,80,0.04);box-shadow:0 12px 40px rgba(11,108,255,0.04)}
+    h1{margin:0 0 6px}
+    .muted{color:#6b7280;font-size:13px;margin-bottom:12px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    .grid{display:grid;grid-template-columns:1fr 320px;gap:12px;margin-top:12px}
+    .panel{background:#fbfeff;border:1px solid #e6eef8;padding:12px;border-radius:10px}
+    .parts{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+    .part-btn{background:#fff;border:1px solid #e6eef8;padding:8px 10px;border-radius:8px;cursor:pointer}
+    .part-btn.active{background:linear-gradient(90deg,#0b6cff,#0066ff);color:#fff;font-weight:700}
+    .q{display:flex;gap:8px;align-items:flex-start;margin-bottom:10px}
+    textarea{flex:1;min-height:64px;padding:8px;border-radius:8px;border:1px solid #e6eef8;resize:vertical}
+    .btn{padding:8px 10px;border-radius:8px;border:0;cursor:pointer;background:#fff;box-shadow:0 6px 18px rgba(11,108,255,0.04)}
+    .btn.primary{background:linear-gradient(90deg,#0b6cff,#0066ff);color:#fff}
+    .btn.danger{background:#ef4444;color:#fff}
+    .file-info{font-size:12px;color:#374151}
+    .small{font-size:13px;color:#6b7280}
+    .actions{display:flex;flex-direction:column;gap:8px}
+    .hint{font-size:12px;color:#6b7280;margin-top:8px}
+    @media (max-width:960px){ .grid{grid-template-columns:1fr} .top{flex-direction:column;align-items:stretch} }
+    .kbd{display:inline-block;padding:4px 8px;border-radius:6px;background:#eef6ff;border:1px solid #dbeafe;font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="top">
+        <div>
+          <h1>Listening Dashboard — Editor (Parts)</h1>
+          <div class="muted">Edit questions per Part (1/2/3). Publish by saving to <code>listening_questions_v1</code>.</div>
+        </div>
+        <div style="text-align:right">
+          <div class="small">Client ID: <span id="cid"></span></div>
+          <div style="margin-top:8px"><button id="openListening" class="btn primary">Open Listening</button></div>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:12px">
+        <div class="panel">
+          <div class="parts">
+            <button data-part="part1" class="part-btn active">Part 1</button>
+            <button data-part="part2" class="part-btn">Part 2</button>
+            <button data-part="part3" class="part-btn">Part 3</button>
+            <div style="flex:1"></div>
+            <div class="small">Last saved: <span id="lastSaved">(never)</span></div>
+          </div>
+
+          <div id="list"></div>
+          <div style="margin-top:8px">
+            <button id="addBtn" class="btn">+ Add question</button>
+          </div>
+          <div class="hint">Upload audio (small files) as data-URL. <span class="kbd">Save & Publish</span> will write to localStorage and notify other tabs.</div>
+        </div>
+
+        <div class="panel">
+          <h3>Actions</h3>
+          <div class="actions">
+            <button id="saveBtn" class="btn primary">Save & Publish (Publish)</button>
+            <button id="resetBtn" class="btn">Reset to defaults</button>
+            <button id="removeBtn" class="btn danger">Remove questions key</button>
+            <button id="exportBtn" class="btn">Export JSON</button>
+            <button id="importBtn" class="btn">Import JSON</button>
+            <input id="importFile" type="file" accept="application/json" style="display:none" />
+            <div class="small">Tip: open Listening page in another tab and then press <strong>Save & Publish</strong> — it should update automatically.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+/* Robust dashboard with extra debug & signal write to ensure other tabs update reliably */
+const QUESTIONS_KEY = 'listening_questions_v1';
+const SIGNAL_KEY = QUESTIONS_KEY + '_signal';
+const CLIENT_KEY = 'listening_dash_client';
+
+const DEFAULT = {
+  part1: [
+    { text: "What colour was the car mentioned in the audio?", audioData: null, sampleAnswer: "red" },
+    { text: "What time did the speaker arrive?", audioData: null, sampleAnswer: "9 am" }
+  ],
+  part2: [
+    { text: "Describe the landscape the narrator mentioned.", audioData: null, sampleAnswer: "mountains and rivers" }
+  ],
+  part3: [
+    { text: "Why do people move to cities according to the speaker?", audioData: null, sampleAnswer: "work opportunities" }
+  ],
+  meta:{ updatedAt: Date.now() }
+};
+
+let CID = sessionStorage.getItem(CLIENT_KEY);
+if(!CID){ CID = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem(CLIENT_KEY, CID); }
+document.getElementById('cid').textContent = CID;
+
+let DATA = load();
+let currentPart = 'part1';
+
+/* DOM refs */
+const listEl = document.getElementById('list');
+const addBtn = document.getElementById('addBtn');
+const saveBtn = document.getElementById('saveBtn');
+const resetBtn = document.getElementById('resetBtn');
+const removeBtn = document.getElementById('removeBtn');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const importFile = document.getElementById('importFile');
+const lastSaved = document.getElementById('lastSaved');
+const openListening = document.getElementById('openListening');
+const partButtons = document.querySelectorAll('.part-btn');
+
+function load(){
+  try{
+    const raw = localStorage.getItem(QUESTIONS_KEY);
+    if(!raw) return JSON.parse(JSON.stringify(DEFAULT));
+    const parsed = JSON.parse(raw);
+    parsed.part1 = parsed.part1 || [];
+    parsed.part2 = parsed.part2 || [];
+    parsed.part3 = parsed.part3 || [];
+    parsed.meta = parsed.meta || { updatedAt: Date.now() };
+    return parsed;
+  }catch(e){
+    console.warn('load error', e);
+    return JSON.parse(JSON.stringify(DEFAULT));
+  }
+}
+function render(){
+  listEl.innerHTML = '';
+  const arr = DATA[currentPart] || [];
+  arr.forEach((q, idx) => {
+    const row = document.createElement('div'); row.className='q';
+    const ta = document.createElement('textarea'); ta.value = q.text;
+    ta.addEventListener('input', ()=> { DATA[currentPart][idx].text = ta.value; });
+    const sa = document.createElement('input'); sa.type='text'; sa.placeholder='Sample answer'; sa.value = q.sampleAnswer || '';
+    sa.style.width='200px'; sa.addEventListener('input', ()=> { DATA[currentPart][idx].sampleAnswer = sa.value; });
+    const file = document.createElement('input'); file.type='file'; file.accept='audio/*';
+    const fileInfo = document.createElement('div'); fileInfo.className='file-info'; fileInfo.textContent = q.audioData ? 'Audio attached' : '';
+    file.addEventListener('change', (ev)=> {
+      const f = ev.target.files[0]; if(!f) return;
+      const reader = new FileReader();
+      reader.onload = (e)=> { DATA[currentPart][idx].audioData = e.target.result; fileInfo.textContent = f.name + ' (attached)'; };
+      reader.readAsDataURL(f);
+    });
+    const up = document.createElement('button'); up.className='btn'; up.textContent='↑'; up.title='Move up';
+    up.onclick = ()=> { if(idx>0){ const t=DATA[currentPart][idx-1]; DATA[currentPart][idx-1]=DATA[currentPart][idx]; DATA[currentPart][idx]=t; render(); } };
+    const down = document.createElement('button'); down.className='btn'; down.textContent='↓'; down.title='Move down';
+    down.onclick = ()=> { if(idx < arr.length-1){ const t=DATA[currentPart][idx+1]; DATA[currentPart][idx+1]=DATA[currentPart][idx]; DATA[currentPart][idx]=t; render(); } };
+    const del = document.createElement('button'); del.className='btn'; del.textContent='Delete'; del.onclick = ()=> { if(confirm('Oʻchirasizmi?')){ arr.splice(idx,1); render(); } };
+    const remAudio = document.createElement('button'); remAudio.className='btn'; remAudio.textContent='Remove audio'; remAudio.onclick = ()=> { DATA[currentPart][idx].audioData = null; fileInfo.textContent=''; alert('Audio removed. Save to publish.'); };
+    const left = document.createElement('div'); left.style.flex='1'; left.appendChild(ta);
+    const metaRow = document.createElement('div'); metaRow.style.display='flex'; metaRow.style.gap='8px'; metaRow.style.marginTop='6px';
+    metaRow.appendChild(sa); metaRow.appendChild(file); metaRow.appendChild(fileInfo);
+    left.appendChild(metaRow);
+    const right = document.createElement('div'); right.style.display='flex'; right.style.flexDirection='column'; right.style.gap='8px';
+    right.appendChild(up); right.appendChild(down); right.appendChild(del); right.appendChild(remAudio);
+    row.appendChild(left); row.appendChild(right);
+    listEl.appendChild(row);
+  });
+  if(arr.length===0) listEl.innerHTML = '<div class="small">No questions in this part. Add one.</div>';
+  lastSaved.textContent = DATA.meta && DATA.meta.updatedAt ? new Date(DATA.meta.updatedAt).toLocaleString() : '(never)';
+}
+
+/* Part switching */
+partButtons.forEach(btn => {
+  btn.addEventListener('click', ()=>{
+    partButtons.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentPart = btn.dataset.part;
+    render();
+  });
+});
+
+/* Basic actions */
+addBtn.addEventListener('click', ()=> { DATA[currentPart].push({ text:'New question...', audioData:null, sampleAnswer:'' }); render(); });
+
+saveBtn.addEventListener('click', ()=> {
+  DATA.meta = DATA.meta || {}; DATA.meta.updatedAt = Date.now(); DATA.meta.sourceId = CID;
+  try{
+    localStorage.setItem(QUESTIONS_KEY, JSON.stringify(DATA));
+    // Also write a small signal key to ensure other tabs get a storage event even in edge cases
+    try{ localStorage.setItem(SIGNAL_KEY, String(Date.now())); }catch(e2){ console.warn('signal set failed', e2); }
+    lastSaved.textContent = new Date(DATA.meta.updatedAt).toLocaleString();
+    console.log('Saved listening questions (key):', QUESTIONS_KEY, 'signal:', SIGNAL_KEY);
+    alert('Saved & published. Listening tab should update automatically.');
+  }catch(e){ alert('Save failed: ' + (e && e.message ? e.message : e)); console.error(e); }
+});
+
+resetBtn.addEventListener('click', ()=> { if(!confirm('Reset to defaults?')) return; DATA = JSON.parse(JSON.stringify(DEFAULT)); DATA.meta = { updatedAt: Date.now(), sourceId: CID }; render(); });
+
+removeBtn.addEventListener('click', ()=> { if(!confirm('Remove questions key from localStorage?')) return; localStorage.removeItem(QUESTIONS_KEY); DATA = JSON.parse(JSON.stringify(DEFAULT)); DATA.meta = { updatedAt: Date.now(), sourceId: CID }; render(); alert('Removed. Listening will use defaults.'); });
+
+exportBtn.addEventListener('click', ()=> {
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'listening_questions.json'; a.click(); URL.revokeObjectURL(url);
+});
+
+importBtn.addEventListener('click', ()=> importFile.click());
+importFile.addEventListener('change', (e)=> {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader(); r.onload = (ev)=>{
+    try{
+      const parsed = JSON.parse(ev.target.result);
+      if(!parsed.part1 && !parsed.part2 && !parsed.part3){ alert('Invalid file — expected parts.'); return; }
+      DATA = parsed;
+      DATA.meta = DATA.meta || { updatedAt: Date.now(), sourceId: CID };
+      render();
+      alert('Imported. Remember to Save & Publish.');
+    }catch(err){ alert('Import error: ' + err.message); }
+  };
+  r.readAsText(f);
+});
+
+openListening.addEventListener('click', ()=> {
+  // Attempt to open listening.html in same folder
+  try{
+    const base = window.location.pathname.replace(/[^\/]*$/,'');
+    const url = window.location.origin + base + 'listening.html';
+    window.open(url, '_blank');
+  }catch(e){
+    // fallback
+    window.open('listening.html', '_blank');
+  }
+});
+
+/* Storage event: reflect other tab changes */
+window.addEventListener('storage', (e)=>{
+  if(e.key === QUESTIONS_KEY || e.key === SIGNAL_KEY){
+    try{
+      const parsed = JSON.parse(localStorage.getItem(QUESTIONS_KEY) || '{}');
+      // if change came from this tab, ignore (optional)
+      if(parsed && parsed.meta && parsed.meta.sourceId === CID){
+        console.log('Storage update from same client, ignoring.');
+        // Still reload to keep UI consistent:
+        DATA = load();
+        render();
+        return;
+      }
+    }catch(err){}
+    DATA = load();
+    render();
+    console.log('Dashboard updated from other tab (storage event).');
+  }
+});
+
+/* init */
+DATA = load();
+render();
+
+/* Debug helper: console summary */
+console.info('Dashboard ready. QUESTIONS_KEY =', QUESTIONS_KEY);
+</script>
+</body>
+</html>

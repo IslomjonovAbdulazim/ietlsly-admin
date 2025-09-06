@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard — Speaking Questions Editor</title>
+  <style>
+    body{font-family:Inter, system-ui, Arial;margin:18px;background:#f4f7fb;color:#0b0b0b}
+    .card{background:#fff;padding:18px;border-radius:10px;max-width:980px;margin:0 auto;box-shadow:0 8px 30px rgba(12,18,30,0.05)}
+    h1{margin:0 0 8px}
+    .muted{color:#6b7280;font-size:13px;margin-bottom:12px}
+    .parts{display:flex;gap:12px;flex-wrap:wrap}
+    .panel{flex:1;min-width:280px;background:#fbfeff;border:1px solid #e6eef8;padding:12px;border-radius:8px}
+    .panel h3{margin:0 0 8px 0;font-size:16px}
+    .q{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px}
+    .q textarea{flex:1;min-height:46px;padding:8px;border-radius:6px;border:1px solid #e6eef8;resize:vertical}
+    .q .btn{padding:6px 8px;border-radius:6px;border:1px solid #d1dbe8;background:#fff;cursor:pointer}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:12px}
+    .primary{background:#0b6cff;color:#fff;border-color:#0b6cff;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+    .danger{background:#ff5a5f;color:#fff;border-color:#ff5a5f;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+    .small{font-size:13px;color:#6b7280}
+    .meta{margin-top:8px;font-size:13px;color:#555}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .btn-inline{padding:6px 8px;border-radius:6px;border:1px solid #d1dbe8;background:#fff;cursor:pointer}
+    .hint{font-size:13px;color:#6b7280;margin-top:8px}
+    @media (max-width:920px){ .parts{flex-direction:column} }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="topbar">
+      <div>
+        <h1>Speaking Dashboard — Savollarni tahrirlash</h1>
+        <div class="muted">Bu sahifa <code>speaking_questions_v1</code> keyini yangilaydi — speaking sahifasi bilan sinxron bo‘lishi uchun.</div>
+      </div>
+      <div style="text-align:right">
+        <div class="small">Client ID: <span id="clientId"></span></div>
+        <div style="margin-top:6px">
+          <button id="openSpeaking" class="btn-inline primary">Open Speaking (new tab)</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:10px">
+      <label class="small">So‘nggi saqlangan vaqti: <span id="lastSaved">(hech qachon)</span></label>
+    </div>
+
+    <div class="parts">
+      <div class="panel" id="panel1">
+        <h3>Part 1 — Short questions</h3>
+        <div id="list1"></div>
+        <div style="margin-top:8px">
+          <button id="add1" class="btn-inline">+ Qo‘shish</button>
+        </div>
+      </div>
+
+      <div class="panel" id="panel2">
+        <h3>Part 2 — Cue cards</h3>
+        <div id="list2"></div>
+        <div style="margin-top:8px">
+          <button id="add2" class="btn-inline">+ Qo‘shish</button>
+        </div>
+      </div>
+
+      <div class="panel" id="panel3">
+        <h3>Part 3 — Discussion questions</h3>
+        <div id="list3"></div>
+        <div style="margin-top:8px">
+          <button id="add3" class="btn-inline">+ Qo‘shish</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls" style="margin-top:14px">
+      <button id="saveBtn" class="primary">Save to localStorage (Publish)</button>
+      <button id="resetBtn" class="btn-inline">Reset to defaults</button>
+      <button id="clearKeyBtn" class="danger">Remove questions key</button>
+      <div style="flex:1"></div>
+      <div class="small">Other tabs will auto-update via BroadcastChannel + storage event.</div>
+    </div>
+
+    <div class="meta" id="metaInfo"></div>
+    <div class="hint">Eslatma: speaking sahifasi siz saqlagan <code>speaking_questions_v1</code> ni tinglaydi va avtomatik yangilanadi. Agar speaking sahifasi boshqa nom bilan ochilgan bo'lsa, "Open Speaking" tugmasini bosganda to'g'ri faylni oching.</div>
+  </div>
+
+<script>
+/* Dashboard for speaking questions (improved) */
+const QUESTIONS_KEY = 'speaking_questions_v1';
+const CLIENT_KEY = 'speaking_dash_client';
+
+/* default questions */
+const DEFAULT = {
+  part1: [
+    "Did you have a favourite book when you were a child?",
+    "What kinds of books do you read for pleasure? Why?",
+    "Do you prefer physical books or e-books? Explain your reason."
+  ],
+  part2: [
+    "Describe a big city you would like to visit."
+  ],
+  part3: [
+    "Why do people move to big cities?",
+    "What problems do big cities face?",
+    "How can cities be made more livable?",
+    "Do you think technology improves city life? Why?"
+  ],
+  meta: { updatedAt: Date.now() }
+};
+
+/* client id */
+let CLIENT_ID = sessionStorage.getItem(CLIENT_KEY);
+if(!CLIENT_ID){ CLIENT_ID = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem(CLIENT_KEY, CLIENT_ID); }
+document.getElementById('clientId').textContent = CLIENT_ID;
+
+/* DOM refs */
+const list1 = document.getElementById('list1'), list2 = document.getElementById('list2'), list3 = document.getElementById('list3');
+const add1 = document.getElementById('add1'), add2 = document.getElementById('add2'), add3 = document.getElementById('add3');
+const saveBtn = document.getElementById('saveBtn'), resetBtn = document.getElementById('resetBtn'), clearKeyBtn = document.getElementById('clearKeyBtn');
+const lastSaved = document.getElementById('lastSaved'), metaInfo = document.getElementById('metaInfo');
+const openSpeakingBtn = document.getElementById('openSpeaking');
+
+/* BroadcastChannel for realtime notify (if available) */
+let bc = null;
+try{ bc = new BroadcastChannel('speaking_channel'); }catch(e){ bc = null; }
+
+/* load or default */
+function loadQuestions(){
+  try{
+    const raw = localStorage.getItem(QUESTIONS_KEY);
+    if(!raw) return JSON.parse(JSON.stringify(DEFAULT));
+    const parsed = JSON.parse(raw);
+    parsed.part1 = parsed.part1 || [];
+    parsed.part2 = parsed.part2 || [];
+    parsed.part3 = parsed.part3 || [];
+    parsed.meta = parsed.meta || { updatedAt: Date.now() };
+    return parsed;
+  }catch(e){
+    console.warn('load error', e);
+    return JSON.parse(JSON.stringify(DEFAULT));
+  }
+}
+let DATA = loadQuestions();
+
+/* render lists */
+function renderAll(){
+  renderList(DATA.part1, list1, 1);
+  renderList(DATA.part2, list2, 2);
+  renderList(DATA.part3, list3, 3);
+  lastSaved.textContent = DATA.meta && DATA.meta.updatedAt ? new Date(DATA.meta.updatedAt).toLocaleString() : '(never)';
+  metaInfo.textContent = `Questions count — Part1: ${DATA.part1.length}, Part2: ${DATA.part2.length}, Part3: ${DATA.part3.length}`;
+}
+
+function renderList(arr, container, partNum){
+  container.innerHTML = '';
+  arr.forEach((q, idx)=>{
+    const row = document.createElement('div'); row.className='q';
+    const ta = document.createElement('textarea'); ta.value = q;
+    ta.addEventListener('input', ()=> { DATA[`part${partNum}`][idx] = ta.value; });
+    const upBtn = document.createElement('button'); upBtn.className='btn'; upBtn.textContent='↑';
+    upBtn.title = 'Move up';
+    upBtn.onclick = ()=> { if(idx>0){ swap(arr, idx, idx-1); renderAll(); } };
+    const downBtn = document.createElement('button'); downBtn.className='btn'; downBtn.textContent='↓';
+    downBtn.title = 'Move down';
+    downBtn.onclick = ()=> { if(idx < arr.length-1){ swap(arr, idx, idx+1); renderAll(); } };
+    const delBtn = document.createElement('button'); delBtn.className='btn'; delBtn.textContent='🗑';
+    delBtn.title = 'Delete';
+    delBtn.onclick = ()=> { if(confirm('O`chirasizmi?')) { arr.splice(idx,1); renderAll(); } };
+    row.appendChild(ta);
+    const right = document.createElement('div'); right.style.display='flex'; right.style.flexDirection='column'; right.style.gap='6px';
+    right.appendChild(upBtn); right.appendChild(downBtn); right.appendChild(delBtn);
+    row.appendChild(right);
+    container.appendChild(row);
+  });
+  if(arr.length===0){
+    const p = document.createElement('div'); p.className='small'; p.style.marginTop='6px'; p.textContent='Hech qanday savol yo`q. Qo`shing.'; container.appendChild(p);
+  }
+}
+function swap(arr,i,j){ const t=arr[i]; arr[i]=arr[j]; arr[j]=t; }
+
+/* add handlers */
+add1.addEventListener('click', ()=> { DATA.part1.push('New question...'); renderAll(); });
+add2.addEventListener('click', ()=> { DATA.part2.push('New cue...'); renderAll(); });
+add3.addEventListener('click', ()=> { DATA.part3.push('New question...'); renderAll(); });
+
+/* save/publish */
+saveBtn.addEventListener('click', ()=> {
+  DATA.meta = DATA.meta || {};
+  DATA.meta.updatedAt = Date.now();
+  DATA.meta.sourceId = CLIENT_ID;
+  try{
+    localStorage.setItem(QUESTIONS_KEY, JSON.stringify(DATA));
+    // Notify other tabs via BroadcastChannel (if available)
+    const message = { type: 'speaking_questions_update', payload: DATA, sourceId: CLIENT_ID, ts: Date.now() };
+    try{ if(bc) bc.postMessage(message); }catch(e){ /* ignore */ }
+    // Also write a small ping to trigger storage event in older browsers (same-origin)
+    try{
+      const pingKey = QUESTIONS_KEY + '_ping';
+      localStorage.setItem(pingKey, JSON.stringify({from: CLIENT_ID, ts: Date.now()}));
+      setTimeout(()=> { try{ localStorage.removeItem(pingKey); }catch(e){} }, 800);
+    }catch(e){ /* ignore */ }
+    lastSaved.textContent = new Date(DATA.meta.updatedAt).toLocaleString();
+    metaInfo.textContent = `Saved by ${CLIENT_ID} at ${lastSaved.textContent}`;
+    alert('Saved. Boshqa tablar avtomatik yangilanadi.');
+  }catch(e){
+    alert('Saqlashda xatolik: ' + (e && e.message ? e.message : e));
+    console.error(e);
+  }
+});
+
+/* reset to defaults */
+resetBtn.addEventListener('click', ()=> {
+  if(!confirm('Default savollarga qaytishni istaysizmi?')) return;
+  DATA = JSON.parse(JSON.stringify(DEFAULT));
+  DATA.meta = { updatedAt: Date.now(), sourceId: CLIENT_ID };
+  renderAll();
+});
+
+/* clear key */
+clearKeyBtn.addEventListener('click', ()=> {
+  if(!confirm('LocalStorage dan savollar kalitini oʻchirib tashlashni xohlaysizmi?')) return;
+  try{
+    localStorage.removeItem(QUESTIONS_KEY);
+    // notify removal to other tabs
+    const msg = { type: 'speaking_questions_removed', from: CLIENT_ID, ts: Date.now() };
+    try{ if(bc) bc.postMessage(msg); }catch(e){}
+    // ping too
+    try{ localStorage.setItem(QUESTIONS_KEY + '_removed', JSON.stringify({from: CLIENT_ID, ts: Date.now()})); setTimeout(()=> localStorage.removeItem(QUESTIONS_KEY + '_removed'), 800); }catch(e){}
+    DATA = JSON.parse(JSON.stringify(DEFAULT));
+    DATA.meta = { updatedAt: Date.now(), sourceId: CLIENT_ID };
+    renderAll();
+    alert('Key olib tashlandi. Speaking sahifasi default savollarni ishlatadi.');
+  }catch(e){
+    alert('Xatolik: ' + e);
+    console.error(e);
+  }
+});
+
+/* open speaking page (default filename) */
+openSpeakingBtn.addEventListener('click', ()=> {
+  // Try to open common speaking filenames in same folder.
+  const candidates = ['Speaking.html','speaking.html','speaking.html']; // prefer Speaking.html
+  let opened = false;
+  for(const c of candidates){
+    const w = window.open(c, '_blank');
+    if(w){ opened = true; break; }
+  }
+  if(!opened){
+    alert('Pop-up blocked yoki fayl topilmadi. Iltimos speaking sahifasini surishtirib oching (masalan Speaking.html).');
+  }
+});
+
+/* storage event - respond to external changes */
+window.addEventListener('storage', (e)=>{
+  // ignore many other keys
+  if(!e.key) return;
+  if(e.key === QUESTIONS_KEY){
+    // parse new value
+    try{
+      const parsed = JSON.parse(e.newValue);
+      // ignore if change originated from this client (sourceId check)
+      if(parsed && parsed.meta && parsed.meta.sourceId === CLIENT_ID) return;
+      DATA = loadQuestions();
+      renderAll();
+      alert('Questions updated in another tab; UI refreshed.');
+    }catch(err){
+      // if key cleared (newValue null) -> reload defaults
+      if(e.newValue === null){
+        DATA = JSON.parse(JSON.stringify(DEFAULT));
+        DATA.meta = { updatedAt: Date.now(), sourceId: CLIENT_ID };
+        renderAll();
+        alert('Questions key was removed in another tab; reset to defaults.');
+      }
+    }
+  }
+  // optional ping keys - ignore or show small notice (not necessary)
+});
+
+/* BroadcastChannel listener */
+if(bc){
+  bc.onmessage = (ev) => {
+    try{
+      const msg = ev.data;
+      if(!msg) return;
+      if(msg.type === 'speaking_questions_update'){
+        if(msg.sourceId === CLIENT_ID) return; // ignore our own message
+        // update UI from payload
+        if(msg.payload){
+          DATA = msg.payload;
+          renderAll();
+          alert('Received questions update via BroadcastChannel — UI refreshed.');
+        }
+      } else if(msg.type === 'speaking_questions_removed'){
+        if(msg.from === CLIENT_ID) return;
+        // Another tab removed key
+        DATA = JSON.parse(JSON.stringify(DEFAULT));
+        DATA.meta = { updatedAt: Date.now(), sourceId: msg.from || 'remote' };
+        renderAll();
+        alert('Questions key removed in another tab — reset to defaults.');
+      }
+    }catch(e){ console.warn('bc message error', e); }
+  };
+}
+
+/* init render */
+renderAll();
+
+/* expose for debugging (optional) */
+window.__DASHBOARD = { loadQuestions, renderAll, DATA };
+</script>
+</body>
+</html>

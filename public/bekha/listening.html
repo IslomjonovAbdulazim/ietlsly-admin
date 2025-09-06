@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Listening — Test (Parts + Auto Mode + CSV)</title>
+  <style>
+    :root{
+      --bg:#f6f9ff; --card:#fff; --accent1:#0b6cff; --accent2:#0066ff; --muted:#6b7280;
+      --success:#10b981; --danger:#ef4444; --glass: rgba(11,108,255,0.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:18px;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#f7fbff 0%, #eef6ff 100%);color:#071229}
+    .wrap{max-width:1100px;margin:0 auto}
+    .card{background:var(--card);padding:20px;border-radius:14px;border:1px solid rgba(8,32,80,0.04);box-shadow:0 12px 36px rgba(11,108,255,0.05)}
+    h1{margin:0 0 6px;font-size:22px}
+    .lead{color:var(--muted);font-size:13px;margin-bottom:12px}
+    .topbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+    .btn{padding:10px 14px;border-radius:10px;border:0;background:#fff;cursor:pointer;box-shadow:0 6px 18px rgba(11,108,255,0.04);transition:all .14s;font-weight:600}
+    .btn:hover{transform:translateY(-3px)}
+    .btn.ghost{background:transparent;border:1px solid #e6f0ff;box-shadow:none}
+    .btn.primary{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#fff}
+    .btn.warn{background:#ffb84d;color:#fff}
+    .settings{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .select, input[type="number"]{padding:8px;border-radius:8px;border:1px solid #e6f0ff}
+    .meter{flex:1;height:10px;background:#eef6ff;border-radius:999px;overflow:hidden}
+    .level{height:100%;width:0%;background:linear-gradient(90deg,#34d399,#10b981);transition:width .08s linear}
+    .panel{margin-top:10px}
+    .qcard{padding:18px;border-radius:12px;border:1px solid #e8f0ff;background:linear-gradient(180deg,#fff,#fbfeff);display:flex;flex-direction:column;gap:12px}
+    .qhead{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .qtitle{font-size:18px;font-weight:700}
+    .small{font-size:13px;color:var(--muted)}
+    .playbtn{width:56px;height:56px;border-radius:999px;display:grid;place-items:center;background:linear-gradient(180deg,#fff,#f6fbff);border:1px solid #e6f0ff;cursor:pointer;transition:transform .12s}
+    .playbtn.playing{box-shadow:0 10px 30px rgba(11,108,255,0.12);transform:scale(1.05)}
+    .progress{height:10px;background:#f3f7ff;border-radius:999px;overflow:hidden}
+    .progress > .bar{height:100%;width:0%;background:linear-gradient(90deg,#ffb84d,#ff8a00);transition:width .12s linear}
+    .answer-row{display:flex;gap:12px;align-items:flex-start}
+    textarea{flex:1;min-height:140px;padding:12px;border-radius:10px;border:1px solid #e7f0ff;resize:vertical;font-size:14px}
+    .side{min-width:220px;display:flex;flex-direction:column;gap:10px}
+    .note{background:#fff7ed;border:1px solid #ffedd5;padding:10px;border-radius:10px;color:#92400e}
+    .controls-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .pager{display:flex;gap:8px;align-items:center}
+    .chip{padding:6px 10px;border-radius:999px;background:#eef6ff;color:var(--muted);font-size:13px}
+    .animated{opacity:0;transform:translateY(6px);animation:fadeIn .28s forwards}
+    @keyframes fadeIn{to{opacity:1;transform:none}}
+    .mobile-stack{display:flex;gap:8px}
+    .footer{margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+    .csvbtn{background:#0b6cff;color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
+    .badge{padding:6px 8px;border-radius:8px;background:#eef2ff;border:1px solid #dbeafe}
+    .config{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    @media (max-width:820px){ .answer-row{flex-direction:column} .side{min-width:unset;width:100%} .topbar{flex-direction:column;align-items:stretch} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card animated">
+      <h1>Listening — Test (Parts, Auto Mode, CSV)</h1>
+      <div class="lead">Dashboard bilan sinxron — Dashboard-ga savollar qoʻshing (har bir part uchun). Testni avtomatik ham ishlatishingiz mumkin.</div>
+
+      <div class="topbar">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="openDashboard" class="btn ghost">Open Dashboard</button>
+          <button id="reloadBtn" class="btn">Reload questions</button>
+          <div class="settings">
+            <label class="small">Part:</label>
+            <select id="partSelect" class="select">
+              <option value="part1">Part 1</option>
+              <option value="part2">Part 2</option>
+              <option value="part3">Part 3</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center">
+          <div class="config">
+            <label class="small">Time / q (s):</label>
+            <input id="timePerQ" type="number" min="5" max="600" step="5" value="60" style="width:90px" />
+            <label class="small">Auto-advance:</label>
+            <input id="autoAdvance" type="checkbox" checked />
+            <label class="small">Require listen %:</label>
+            <input id="listenPct" type="number" min="0" max="100" step="5" value="70" style="width:70px" />
+          </div>
+          <button id="startTest" class="btn primary">Start Test</button>
+          <button id="stopTest" class="btn warn">Stop Test</button>
+        </div>
+      </div>
+
+      <div class="panel" id="mainPanel"></div>
+
+      <div class="footer">
+        <div class="small">Answers stored locally (<code>listening_app_v1</code>). Questions key: <code>listening_questions_v1</code>.</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="exportCSV" class="csvbtn">Export answers CSV</button>
+          <div class="badge">Avg: <strong id="avgScore">0.0</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* listening.html with Parts, Auto mode, CSV export */
+/* Keys */
+const QUESTIONS_KEY = 'listening_questions_v1';
+const APP_KEY = 'listening_app_v1';
+
+/* Default structure (parts) */
+const DEFAULT_QUESTIONS = {
+  part1: [
+    { text: "What colour was the car mentioned in the audio?", audioData: null, sampleAnswer: "red" },
+    { text: "What time did the speaker arrive?", audioData: null, sampleAnswer: "9 am" }
+  ],
+  part2: [
+    { text: "Describe the landscape the narrator mentioned.", audioData: null, sampleAnswer: "mountains and rivers" }
+  ],
+  part3: [
+    { text: "Why do people move to cities according to the speaker?", audioData: null, sampleAnswer: "work opportunities" },
+    { text: "How can urban life be improved?", audioData: null, sampleAnswer: "better public transport" }
+  ],
+  meta:{updatedAt: Date.now()}
+};
+
+/* App state */
+let QUESTIONS = { part1:[], part2:[], part3:[], meta:{} };
+let APP = { answers: {part1:[], part2:[], part3:[]}, scores: {part1:[], part2:[], part3:[]}, index:{part1:0,part2:0,part3:0}, running:false };
+
+/* load/save */
+function loadQuestions(){
+  try{
+    const raw = localStorage.getItem(QUESTIONS_KEY);
+    if(!raw){ QUESTIONS = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS)); return; }
+    const parsed = JSON.parse(raw);
+    QUESTIONS.part1 = (parsed.part1||[]).map(it=>({ text: it.text||'', audioData: it.audioData||null, sampleAnswer: it.sampleAnswer||'' }));
+    QUESTIONS.part2 = (parsed.part2||[]).map(it=>({ text: it.text||'', audioData: it.audioData||null, sampleAnswer: it.sampleAnswer||'' }));
+    QUESTIONS.part3 = (parsed.part3||[]).map(it=>({ text: it.text||'', audioData: it.audioData||null, sampleAnswer: it.sampleAnswer||'' }));
+    QUESTIONS.meta = parsed.meta || { updatedAt: Date.now() };
+  }catch(e){
+    console.warn('loadQuestions error', e);
+    QUESTIONS = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
+  }
+}
+function loadApp(){
+  try{
+    const raw = localStorage.getItem(APP_KEY);
+    if(!raw){
+      APP = { answers: {part1:[],part2:[],part3:[]}, scores:{part1:[],part2:[],part3:[]}, index:{part1:0,part2:0,part3:0}, running:false };
+      ensureAppArrays(); return;
+    }
+    const parsed = JSON.parse(raw);
+    APP = parsed;
+    ensureAppArrays();
+  }catch(e){
+    console.warn('loadApp error', e);
+    APP = { answers: {part1:[],part2:[],part3:[]}, scores:{part1:[],part2:[],part3:[]}, index:{part1:0,part2:0,part3:0}, running:false };
+    ensureAppArrays();
+  }
+}
+function ensureAppArrays(){
+  ['part1','part2','part3'].forEach(part=>{
+    APP.answers[part] = APP.answers[part] || [];
+    APP.scores[part] = APP.scores[part] || [];
+    while(APP.answers[part].length < QUESTIONS[part].length) APP.answers[part].push('');
+    APP.answers[part].length = QUESTIONS[part].length;
+    while(APP.scores[part].length < QUESTIONS[part].length) APP.scores[part].push(null);
+    APP.scores[part].length = QUESTIONS[part].length;
+    APP.index[part] = Math.min(APP.index[part]||0, Math.max(0, QUESTIONS[part].length-1));
+  });
+}
+function saveApp(){ try{ localStorage.setItem(APP_KEY, JSON.stringify(APP)); }catch(e){ console.warn('saveApp', e); }}
+
+/* UI refs */
+const mainPanel = document.getElementById('mainPanel');
+const startTestBtn = document.getElementById('startTest');
+const stopTestBtn = document.getElementById('stopTest');
+const openDashboard = document.getElementById('openDashboard');
+const reloadBtn = document.getElementById('reloadBtn');
+const partSelect = document.getElementById('partSelect');
+const timePerQInput = document.getElementById('timePerQ');
+const autoAdvanceCheckbox = document.getElementById('autoAdvance');
+const listenPctInput = document.getElementById('listenPct');
+const avgScoreEl = document.getElementById('avgScore');
+const exportCSVBtn = document.getElementById('exportCSV');
+
+let playbackAudio = null;
+let playbackInterval = null;
+let playedPct = 0;
+let questionTimer = null;
+
+/* render current question for selected part (ketma-ket one-by-one) */
+function render(){
+  loadQuestions();
+  loadApp();
+  avgScoreEl.textContent = computeAvg();
+
+  const part = partSelect.value || 'part1';
+  const idx = APP.index[part] || 0;
+  if(QUESTIONS[part].length === 0){
+    mainPanel.innerHTML = `<div class="qcard"><div class="qtitle">No questions in ${part}</div><div class="small">Use Dashboard to add questions</div></div>`; return;
+  }
+  const q = QUESTIONS[part][idx];
+  mainPanel.innerHTML = '';
+
+  const card = document.createElement('div'); card.className='qcard animated';
+  card.innerHTML = `
+    <div class="qhead">
+      <div>
+        <div class="small">Part: <strong>${part}</strong> — Question ${idx+1} / ${QUESTIONS[part].length}</div>
+        <div class="qtitle" id="qTitle">${escapeHtml(q.text)}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+        <div class="small faded">Saved: <span id="savedMark">${APP.answers[part][idx] ? 'Yes' : 'No'}</span></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div id="playBtn" class="playbtn" title="Play / Pause">▶</div>
+          <div class="small">Listen required: <strong id="needPct">${listenPctInput.value}%</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress"><div id="progressBar" class="bar"></div></div>
+
+    <div class="answer-row">
+      <textarea id="answerArea" placeholder="Write your answer...">${escapeHtml(APP.answers[part][idx]||'')}</textarea>
+      <div class="side">
+        <div class="note">Tip: Ctrl+Enter — saqlash. Auto-mode: vaqt tugaganda avtomatik keyingi savolga oʻtadi (agar yoqilgan).</div>
+        <div class="small">Sample answer: <strong id="sampleAns">${escapeHtml(q.sampleAnswer||'—')}</strong></div>
+        <div class="controls-row">
+          <button id="saveBtn" class="btn">Save</button>
+          <button id="checkBtn" class="btn primary">Check</button>
+          <button id="nextBtn" class="btn">Next</button>
+        </div>
+        <div class="small">Score: <span id="scoreView">${APP.scores[part][idx]!==null?APP.scores[part][idx]:'—'}</span></div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="pager">
+        <button id="prevBtn" class="btn">⟨ Prev</button>
+        <div class="chip">Part: ${part} — Q ${idx+1}/${QUESTIONS[part].length}</div>
+        <button id="gotoBtn" class="btn">Go to part start</button>
+      </div>
+      <div class="small">Questions updated: <span id="qUpdated">${QUESTIONS.meta && QUESTIONS.meta.updatedAt ? new Date(QUESTIONS.meta.updatedAt).toLocaleString() : '(never)'}</span></div>
+    </div>
+  `;
+  mainPanel.appendChild(card);
+
+  // wire
+  const playBtn = document.getElementById('playBtn');
+  const progressBar = document.getElementById('progressBar');
+  const answerArea = document.getElementById('answerArea');
+  const saveBtn = document.getElementById('saveBtn');
+  const checkBtn = document.getElementById('checkBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const prevBtn = document.getElementById('prevBtn');
+  const scoreView = document.getElementById('scoreView');
+  const savedMark = document.getElementById('savedMark');
+  const needPctEl = document.getElementById('needPct');
+
+  let requiredPct = parseInt(listenPctInput.value || '70', 10);
+  needPctEl.textContent = requiredPct + '%';
+
+  // setup audio or TTS
+  if(playbackAudio){ try{ playbackAudio.pause(); }catch(e){} playbackAudio = null; }
+  playedPct = 0;
+  progressBar.style.width = '0%';
+  playBtn.classList.remove('playing');
+
+  if(q.audioData){
+    playbackAudio = new Audio(q.audioData);
+    playbackAudio.preload = 'auto';
+    playbackAudio.onended = () => { playBtn.classList.remove('playing'); progressBar.style.width = '100%'; playedPct = 100; updateControls(); };
+    playbackAudio.ontimeupdate = () => {
+      if(playbackAudio.duration){
+        const pct = Math.round((playbackAudio.currentTime / playbackAudio.duration) * 100);
+        progressBar.style.width = pct + '%';
+        playedPct = Math.max(playedPct, pct);
+        updateControls();
+      }
+    };
+  } else {
+    playbackAudio = null;
+    // TTS fallback uses artificial progress on play
+  }
+
+  function doPlay(){
+    if(playbackAudio){
+      if(playbackAudio.paused){ playbackAudio.play().catch(e=>console.warn(e)); playBtn.classList.add('playing'); }
+      else { playbackAudio.pause(); playBtn.classList.remove('playing'); }
+    } else {
+      if('speechSynthesis' in window){
+        if(window.__tts){ window.speechSynthesis.cancel(); window.__tts = null; playBtn.classList.remove('playing'); return; }
+        const u = new SpeechSynthesisUtterance(q.text || '');
+        u.lang = 'en-US';
+        window.__tts = u;
+        playBtn.classList.add('playing');
+        let est = Math.max(3, (q.text||'').split(/\s+/).length / 2.2);
+        let elapsed = 0;
+        progressBar.style.width = '0%';
+        const t = setInterval(()=>{ elapsed += 0.25; const pct = Math.min(100, Math.round((elapsed/est)*100)); progressBar.style.width = pct + '%'; playedPct = Math.max(playedPct, pct); updateControls(); if(pct>=100) clearInterval(t); }, 250);
+        u.onend = ()=>{ playBtn.classList.remove('playing'); progressBar.style.width = '100%'; playedPct = 100; window.__tts = null; updateControls(); };
+        window.speechSynthesis.speak(u);
+      } else {
+        alert('No audio and TTS not supported.');
+      }
+    }
+  }
+
+  playBtn.onclick = doPlay;
+  progressBar.parentElement.onclick = doPlay;
+
+  function updateControls(){
+    const allow = (q.audioData ? (playedPct >= requiredPct) : true);
+    saveBtn.disabled = !allow;
+    checkBtn.disabled = !allow;
+    saveBtn.style.opacity = allow ? 1 : 0.5;
+    checkBtn.style.opacity = allow ? 1 : 0.5;
+    if(!allow) savedMark.textContent = 'No (listen first)';
+  }
+
+  updateControls();
+
+  answerArea.addEventListener('input', ()=> {
+    APP.answers[part][idx] = answerArea.value;
+    savedMark.textContent = APP.answers[part][idx] ? 'No (unsaved)' : 'No';
+  });
+
+  answerArea.addEventListener('keydown',(e)=>{ if(e.ctrlKey && e.key==='Enter'){ saveBtn.click(); } });
+
+  saveBtn.addEventListener('click', ()=> {
+    if(q.audioData && playedPct < requiredPct){
+      alert(`Iltimos audioni kamida ${requiredPct}% tinglang (hozir: ${playedPct}%).`);
+      return;
+    }
+    APP.answers[part][idx] = answerArea.value;
+    saveApp();
+    savedMark.textContent = APP.answers[part][idx] ? 'Yes' : 'No';
+    alert('Javob saqlandi.');
+  });
+
+  checkBtn.addEventListener('click', ()=> {
+    if(q.audioData && playedPct < requiredPct){
+      alert(`Iltimos audioni kamida ${requiredPct}% tinglang.`);
+      return;
+    }
+    const user = (answerArea.value||'').trim().toLowerCase();
+    const key = (q.sampleAnswer||'').trim().toLowerCase();
+    let score = 0;
+    if(!user) score = 0;
+    else if(!key) score = 1;
+    else if(user === key) score = 9;
+    else if(user.includes(key)) score = 7;
+    else {
+      const us = user.split(/\s+/), ks = key.split(/\s+/);
+      const shared = us.filter(w=>ks.includes(w)).length;
+      const ratio = shared / Math.max(1, ks.length);
+      score = Math.round(Math.min(8, Math.max(1, ratio*6)));
+    }
+    APP.scores[part][idx] = score;
+    saveApp();
+    scoreView.textContent = score;
+    avgScoreEl.textContent = computeAvg();
+    alert('Natija: ' + score);
+  });
+
+  nextBtn.addEventListener('click', ()=> {
+    if(APP.index[part] < QUESTIONS[part].length - 1){ APP.index[part]++; saveApp(); render(); } else { alert('This is the last question in this part.'); }
+  });
+  prevBtn.addEventListener('click', ()=> {
+    if(APP.index[part] > 0){ APP.index[part]--; saveApp(); render(); } else { alert('This is the first question in this part.'); }
+  });
+  document.getElementById('gotoBtn').addEventListener('click', ()=> { APP.index[part] = 0; saveApp(); render(); });
+
+  // if auto-mode running and this render happened due to auto-advance, start timer for this question
+  if(APP.running){
+    startQuestionTimer();
+  }
+}
+
+/* Auto test: sequence through parts then questions in each part */
+function startTestSequence(){
+  if(APP.running) return;
+  APP.running = true;
+  saveApp();
+  // set starting point — current selected part & its index
+  runNextInSequence();
+}
+function stopTestSequence(){
+  APP.running = false;
+  saveApp();
+  clearQuestionTimer();
+  if(playbackAudio){ try{ playbackAudio.pause(); }catch(e){} playbackAudio=null; }
+  if(window.__tts){ try{ window.speechSynthesis.cancel(); }catch(e){} window.__tts=null; }
+  alert('Test stopped.');
+}
+function computeAvg(){
+  let total=0,count=0;
+  ['part1','part2','part3'].forEach(part=>{
+    APP.scores[part].forEach(s=>{ if(s!==null && s!==undefined){ total+=s; count++; } });
+  });
+  return count? (total/count).toFixed(1) : '0.0';
+}
+
+/* Auto-run helpers */
+function runNextInSequence(){
+  const parts = ['part1','part2','part3'];
+  const selected = partSelect.value || 'part1';
+  // find order: start from selected part then wrap
+  const order = [...parts.slice(parts.indexOf(selected)), ...parts.slice(0, parts.indexOf(selected))];
+  // find first part with remaining questions
+  let found = false;
+  for(let pi=0; pi<order.length && !found; pi++){
+    const part = order[pi];
+    const idx = APP.index[part] || 0;
+    if(idx < QUESTIONS[part].length){
+      // set UI to that part and index
+      partSelect.value = part;
+      render();
+      found = true;
+      break;
+    }
+  }
+  if(!found){
+    // nothing to run
+    APP.running = false; saveApp(); alert('No questions to run.'); return;
+  }
+  // start timer in render via APP.running true
+}
+
+/* Question timer */
+function clearQuestionTimer(){
+  if(questionTimer){ clearTimeout(questionTimer); questionTimer = null; }
+  if(playbackInterval){ clearInterval(playbackInterval); playbackInterval = null; }
+}
+function startQuestionTimer(){
+  clearQuestionTimer();
+  const timePerQ = Math.max(5, parseInt(timePerQInput.value||'60',10));
+  const autoAdvance = !!autoAdvanceCheckbox.checked;
+  const part = partSelect.value || 'part1';
+  const idx = APP.index[part] || 0;
+  // stop any playing audio and start again from beginning to ensure progress tracking
+  try{ if(playbackAudio){ playbackAudio.currentTime = 0; playbackAudio.play().catch(()=>{}); } }catch(e){}
+  // For TTS fallback we already started play when user hits play — auto mode won't force TTS play.
+  let elapsed = 0;
+  playbackInterval = setInterval(()=> {
+    elapsed += 0.5;
+    if(elapsed >= timePerQ){
+      clearQuestionTimer();
+      // if autoAdvance, move next
+      if(autoAdvance){
+        // if last question in this part -> move to next part's first question
+        if(APP.index[part] < QUESTIONS[part].length - 1){
+          APP.index[part] = APP.index[part] + 1;
+        } else {
+          // move to next part
+          const order = ['part1','part2','part3'];
+          const curi = order.indexOf(part);
+          let moved = false;
+          for(let i=1;i<=2;i++){
+            const p2 = order[(curi + i) % 3];
+            if(QUESTIONS[p2].length > 0){
+              APP.index[p2] = Math.min(APP.index[p2] || 0, QUESTIONS[p2].length - 1);
+              partSelect.value = p2;
+              moved = true; break;
+            }
+          }
+          if(!moved){ // no more parts with questions -> stop
+            APP.running = false; saveApp(); alert('Auto test finished.'); render(); return;
+          }
+        }
+        saveApp();
+        render(); // will start timer for new question (if APP.running)
+      } else {
+        alert('Time up for this question.');
+      }
+    }
+  }, 500);
+}
+
+/* CSV export */
+function exportCSV(){
+  loadApp(); loadQuestions();
+  const rows = [];
+  rows.push(['part','index','question','answer','score','sampleAnswer'].join(','));
+  ['part1','part2','part3'].forEach(part=>{
+    QUESTIONS[part].forEach((q,i)=>{
+      const ans = APP.answers[part][i] || '';
+      const sc = APP.scores[part][i]!==null ? APP.scores[part][i] : '';
+      rows.push([part, i+1, csvEsc(q.text), csvEsc(ans), sc, csvEsc(q.sampleAnswer||'')].join(','));
+    });
+  });
+  const csv = rows.join('\r\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `listening_answers_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+}
+function csvEsc(s){ if(s==null) s=''; return `"${String(s).replace(/"/g,'""')}"`; }
+
+/* UI wiring */
+document.getElementById('openDashboard').addEventListener('click', ()=> {
+  const path = window.location.pathname.replace(/[^\/]*$/, '');
+  const url = window.location.origin + path + 'dashboard_listening.html';
+  window.open(url,'_blank');
+});
+document.getElementById('reloadBtn').addEventListener('click', ()=> { loadQuestions(); render(); alert('Questions reloaded.'); });
+startTestBtn.addEventListener('click', ()=> {
+  APP.running = true; saveApp(); runNextInSequence(); render(); alert('Auto test started.'); 
+});
+stopTestBtn.addEventListener('click', ()=> { stopTestSequence(); render(); });
+partSelect.addEventListener('change', ()=> { render(); });
+exportCSVBtn.addEventListener('click', exportCSV);
+
+/* Storage event: update when dashboard publishes */
+window.addEventListener('storage', (e)=>{
+  if(e.key === QUESTIONS_KEY){
+    loadQuestions();
+    // adjust APP arrays lengths
+    loadApp();
+    ensureAppArrays();
+    saveApp();
+    render();
+    console.info('Questions updated from dashboard.');
+  }
+});
+
+/* helpers */
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+
+/* startup */
+loadQuestions();
+loadApp();
+ensureAppArrays();
+render();
+
+</script>
+</body>
+</html>

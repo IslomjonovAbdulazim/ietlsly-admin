@@ -81,6 +81,11 @@ export const sidebarData: SidebarData = {
           icon: Mic,
         },
         {
+          title: 'IELTS Sections',
+          url: '/ielts-sections',
+          icon: BookOpen,
+        },
+        {
           title: 'Courses',
           url: '/courses',
           icon: BookMarked,

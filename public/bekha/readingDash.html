@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Reading Dashboard — passages editor</title>
+  <style>
+    body{font-family:Inter,system-ui,Arial;margin:18px;background:#f4f7fb;color:#0b0b0b}
+    .card{background:#fff;padding:18px;border-radius:10px;max-width:1100px;margin:0 auto;box-shadow:0 12px 40px rgba(12,18,30,0.07)}
+    h1{margin:0 0 8px}
+    .muted{color:#6b7280;font-size:13px;margin-bottom:12px}
+    .parts{display:flex;gap:12px;flex-wrap:wrap}
+    .panel{flex:1;min-width:320px;background:#fbfeff;border:1px solid #e6eef8;padding:12px;border-radius:8px}
+    .panel h3{margin:0 0 8px 0;font-size:16px}
+    .item{display:flex;gap:8px;align-items:flex-start;margin-bottom:10px}
+    .item textarea{flex:1;min-height:80px;padding:8px;border-radius:6px;border:1px solid #e6eef8;resize:vertical}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:12px}
+    .btn{padding:8px 10px;border-radius:8px;border:0;background:#0b6cff;color:#fff;cursor:pointer}
+    .btn.ghost{background:#fff;border:1px solid #e6eef8;color:#0b0b0b}
+    .small{font-size:13px;color:#6b7280}
+    .meta{margin-top:8px;font-size:13px;color:#555}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .btn-inline{padding:8px 10px;border-radius:8px;border:0;background:#0b6cff;color:#fff;cursor:pointer}
+    .mini{padding:6px 8px;border-radius:6px;border:0;background:#f1f5f9;color:#0b0b0b;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="topbar">
+      <div>
+        <h1>Reading Dashboard — Passages & Questions</h1>
+        <div class="muted">Bu sahifa <code>reading_passages_v1</code> kalitini yangilaydi — Reading sahifasi avtomatik yangilanadi.</div>
+      </div>
+      <div style="text-align:right">
+        <div class="small">Client ID: <span id="clientId"></span></div>
+        <div style="margin-top:8px">
+          <button id="openReading" class="btn-inline">Open Reading (new tab)</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:320px">
+        <div style="margin-bottom:8px"><strong>Passages</strong></div>
+        <div id="list"></div>
+        <div style="margin-top:8px">
+          <button id="addPassage" class="mini">+ Add passage</button>
+        </div>
+      </div>
+
+      <div style="width:320px">
+        <div style="margin-bottom:8px"><strong>Actions</strong></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button id="saveBtn" class="btn">Publish to localStorage</button>
+          <button id="resetBtn" class="btn ghost">Reset to defaults</button>
+          <button id="clearBtn" class="btn ghost">Remove key (reading_passages_v1)</button>
+        </div>
+        <div class="meta" id="meta"></div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+/* reading_dashboard.html
+   - Editor for passages stored in reading_passages_v1.
+   - Publishing writes meta.sourceId = CLIENT_ID to help other tabs ignore self-updates if needed.
+*/
+
+const PASSAGES_KEY = 'reading_passages_v1';
+const CLIENT_KEY = 'reading_client_id';
+let CLIENT_ID = sessionStorage.getItem(CLIENT_KEY);
+if(!CLIENT_ID){ CLIENT_ID = Math.random().toString(36).slice(2)+Date.now().toString(36); sessionStorage.setItem(CLIENT_KEY, CLIENT_ID); }
+document.getElementById('clientId').textContent = CLIENT_ID;
+
+const DEFAULT = [
+  { title:'A Small Town', text: 'Once upon a time in a small town, people greeted each other with warmth. The streets were lined with trees and the markets smelled of fresh bread.', questions: ['Where is the story set?','What did the markets smell of?'] },
+  { title:'Technology Today', text: 'Technology has changed how we communicate. Mobile phones and the internet make it possible to connect with people across the world instantly.', questions: ['What changed how we communicate?','Give two examples of technologies mentioned.'] }
+];
+
+let DATA = loadPassages();
+renderList();
+updateMeta();
+
+document.getElementById('addPassage').addEventListener('click', ()=> {
+  DATA.push({ title:'New passage', text:'Write your passage here...', questions:['New question?'] });
+  renderList();
+});
+
+document.getElementById('saveBtn').addEventListener('click', ()=> {
+  const payload = DATA.map(p=>({ title:p.title, text:p.text, questions: p.questions }));
+  const wrapper = { items: payload, meta: { updatedAt: Date.now(), sourceId: CLIENT_ID } };
+  try{
+    localStorage.setItem(PASSAGES_KEY, JSON.stringify(payload));
+    updateMeta();
+    alert('Published. Reading page will refresh automatically in other tabs.');
+  }catch(e){ alert('Save failed: ' + e.message); }
+});
+
+document.getElementById('resetBtn').addEventListener('click', ()=> {
+  if(!confirm('Reset to default passages?')) return;
+  DATA = JSON.parse(JSON.stringify(DEFAULT));
+  renderList();
+  updateMeta();
+});
+
+document.getElementById('clearBtn').addEventListener('click', ()=> {
+  if(!confirm('Remove the passages key from localStorage?')) return;
+  localStorage.removeItem(PASSAGES_KEY);
+  DATA = JSON.parse(JSON.stringify(DEFAULT));
+  renderList();
+  updateMeta();
+});
+
+document.getElementById('openReading').addEventListener('click', ()=> {
+  const url = location.pathname.replace(/[^/]*$/, '') + 'reading.html';
+  window.open(url, '_blank');
+});
+
+/* storage events from other tabs: update UI */
+window.addEventListener('storage', (e)=> {
+  if(e.key === PASSAGES_KEY){
+    // ignore our own writes? (we don't track here)
+    DATA = loadPassages();
+    renderList();
+    updateMeta();
+  }
+});
+
+function loadPassages(){
+  try{
+    const raw = localStorage.getItem(PASSAGES_KEY);
+    if(!raw) return JSON.parse(JSON.stringify(DEFAULT));
+    const parsed = JSON.parse(raw);
+    if(Array.isArray(parsed)) return parsed.map(p => ({ title: p.title||'(untitled)', text: p.text||'', questions: (p.questions && Array.isArray(p.questions)) ? p.questions.slice() : [] }));
+    return JSON.parse(JSON.stringify(DEFAULT));
+  }catch(e){
+    console.warn('load error', e);
+    return JSON.parse(JSON.stringify(DEFAULT));
+  }
+}
+
+function renderList(){
+  const container = document.getElementById('list');
+  container.innerHTML = '';
+  DATA.forEach((p, idx)=>{
+    const row = document.createElement('div'); row.style.border='1px solid #eef6ff'; row.style.padding='8px'; row.style.marginBottom='8px'; row.style.borderRadius='8px';
+    const title = document.createElement('input'); title.value = p.title; title.style.width='100%'; title.style.padding='6px'; title.style.borderRadius='6px'; title.style.border='1px solid #e6eef8';
+    title.addEventListener('input', ()=> { DATA[idx].title = title.value; });
+    const textarea = document.createElement('textarea'); textarea.value = p.text; textarea.style.width='100%'; textarea.style.marginTop='8px'; textarea.style.minHeight='80px'; textarea.addEventListener('input', ()=> { DATA[idx].text = textarea.value; });
+    const qList = document.createElement('div'); qList.style.marginTop='8px';
+    p.questions.forEach((q, qi)=>{
+      const qrow = document.createElement('div'); qrow.style.display='flex'; qrow.style.gap='6px'; qrow.style.marginBottom='6px';
+      const qta = document.createElement('input'); qta.value = q; qta.style.flex='1'; qta.addEventListener('input', ()=> { DATA[idx].questions[qi] = qta.value; });
+      const qdel = document.createElement('button'); qdel.textContent='🗑'; qdel.className='mini'; qdel.addEventListener('click', ()=> { if(confirm('Delete question?')) { DATA[idx].questions.splice(qi,1); renderList(); } });
+      qrow.appendChild(qta); qrow.appendChild(qdel); qList.appendChild(qrow);
+    });
+    const addQbtn = document.createElement('button'); addQbtn.textContent = '+ Add question'; addQbtn.className='mini'; addQbtn.style.marginTop='6px'; addQbtn.addEventListener('click', ()=> { DATA[idx].questions.push('New question?'); renderList(); });
+
+    const actions = document.createElement('div'); actions.style.display='flex'; actions.style.gap='6px'; actions.style.marginTop='8px';
+    const up = document.createElement('button'); up.textContent='↑'; up.className='mini'; up.addEventListener('click', ()=> { if(idx>0){ const t=DATA[idx-1]; DATA[idx-1]=DATA[idx]; DATA[idx]=t; renderList(); }});
+    const down = document.createElement('button'); down.textContent='↓'; down.className='mini'; down.addEventListener('click', ()=> { if(idx < DATA.length-1){ const t=DATA[idx+1]; DATA[idx+1]=DATA[idx]; DATA[idx]=t; renderList(); }});
+    const del = document.createElement('button'); del.textContent='Delete passage'; del.className='mini'; del.addEventListener('click', ()=> { if(confirm('Delete passage?')){ DATA.splice(idx,1); renderList(); }});
+    actions.appendChild(up); actions.appendChild(down); actions.appendChild(del);
+
+    row.appendChild(title);
+    row.appendChild(textarea);
+    row.appendChild(qList);
+    row.appendChild(addQbtn);
+    row.appendChild(actions);
+    container.appendChild(row);
+  });
+  if(DATA.length===0){
+    const p = document.createElement('div'); p.className='small'; p.textContent='No passages. Add one.'; container.appendChild(p);
+  }
+}
+
+function updateMeta(){
+  const meta = document.getElementById('meta');
+  const raw = localStorage.getItem(PASSAGES_KEY);
+  if(!raw){ meta.textContent = 'No key in localStorage. Reading will use default passages.'; return; }
+  try{
+    const parsed = JSON.parse(raw);
+    meta.textContent = `Saved passages: ${Array.isArray(parsed) ? parsed.length : '(unknown)'} — last updated: ${new Date().toLocaleString()}`;
+  }catch(e){ meta.textContent = 'Saved passages (invalid JSON)'; }
+}
+
+</script>
+</body>
+</html>

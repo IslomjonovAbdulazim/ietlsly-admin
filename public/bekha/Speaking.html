@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Speaking Test — Stylish (Dashboard sync)</title>
+  <style>
+    /* Bright/light theme, no dark mode */
+    :root{
+      --bg: #f7fbff;
+      --card: #ffffff;
+      --accent: #0b6cff;
+      --accent-2: #07b39b;
+      --muted: #6b7280;
+      --danger: #e11d48;
+      --glass: rgba(255,255,255,0.85);
+      --shadow: 0 10px 30px rgba(11,108,255,0.08);
+      --radius: 14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:18px; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg,#eef7ff 0%, #f9fcff 100%);
+      color:#071232;
+    }
+    .container{max-width:1100px;margin:0 auto}
+    .card{
+      background:var(--card); padding:22px; border-radius:var(--radius); box-shadow:var(--shadow);
+      border: 1px solid rgba(11,108,255,0.06);
+    }
+    h1{margin:0;font-size:20px}
+    .subtitle{color:var(--muted);font-size:13px;margin-top:6px}
+
+    /* Top row */
+    .top-row{display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap}
+    .btn{
+      border:0;padding:10px 14px;border-radius:10px;background:#fff;cursor:pointer;
+      box-shadow:0 6px 18px rgba(11,18,40,0.03);transition:transform .12s, box-shadow .12s, background .12s;
+      border:1px solid rgba(11,108,255,0.06); font-weight:600;
+    }
+    .btn:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(11,108,255,0.08)}
+    .btn:active{transform:translateY(0)}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),#0060f0);color:#fff;border-color:transparent}
+    .btn.ghost{background:transparent;border:1px dashed rgba(11,108,255,0.12)}
+    .btn.warn{background:linear-gradient(90deg,#ffb84d,#ff8a00);color:#141414}
+
+    .meter{flex:1;height:12px;background:#eef3fb;border-radius:999px;overflow:hidden}
+    .level{height:100%;width:0%;background:linear-gradient(90deg,#34d399,#10b981);transition:width .12s linear}
+
+    .top-right{margin-left:auto;text-align:right}
+    .small{font-size:13px;color:var(--muted)}
+
+    /* Main panel */
+    .panel{margin-top:18px}
+    .card-inner{background:linear-gradient(180deg,#ffffff,#fbfeff);border-radius:12px;padding:16px;border:1px solid #eef6ff}
+
+    .question-title{font-weight:700;font-size:18px;margin-top:8px}
+    .status-badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef6ff;border:1px solid #dbeafe;color:#0353a4;font-weight:700}
+
+    .controls{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+    .progress{height:12px;background:#f3f6fb;border-radius:999px;overflow:hidden;margin-top:10px}
+    .progress .bar{height:100%;width:0%;background:linear-gradient(90deg,#ffb84d,#ff8a00);transition:width .15s linear}
+
+    .rec-dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--danger);opacity:0;transform:scale(1)}
+    .rec-dot.recording{opacity:1;animation:recPulse 1000ms infinite}
+    @keyframes recPulse{0%{transform:scale(1);box-shadow:0 0 0 0 rgba(225,29,72,0.2)}70%{transform:scale(1.4);box-shadow:0 0 0 14px rgba(225,29,72,0)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(225,29,72,0)}}
+
+    .transcript{margin-top:12px;padding:12px;border-radius:10px;border:1px solid #eef6ff;background:linear-gradient(180deg,#fff,#fcfeff)}
+    .muted{color:var(--muted)}
+
+    /* Waveform canvas */
+    .wave-wrap{margin-top:14px;border-radius:10px;overflow:hidden;border:1px solid rgba(11,108,255,0.04);background:linear-gradient(180deg,#f8fbff,#ffffff);padding:6px}
+    canvas#wave{width:100%;height:80px;display:block}
+
+    /* semantic nav */
+    .nav{display:flex;gap:8px;margin-top:14px}
+    .nav .pill{padding:8px 12px;border-radius:999px;background:#fff;border:1px solid rgba(11,108,255,0.06);cursor:pointer;transition:transform .12s}
+    .nav .pill.active{background:linear-gradient(90deg,var(--accent),#0a5be6);color:#fff;transform:translateY(-3px)}
+
+    /* fancy buttons animation icons */
+    .glow {
+      position:relative;
+      overflow:visible;
+    }
+    .glow::after{
+      content:"";position:absolute;inset:-6px;border-radius:inherit;opacity:0;pointer-events:none;
+      box-shadow:0 12px 40px rgba(11,108,255,0.12);transition:opacity .18s;
+    }
+    .glow:hover::after{opacity:1}
+
+    /* small responsive */
+    @media (max-width:720px){ .top-row{flex-direction:column;align-items:stretch} .top-right{text-align:left} }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Speaking Test</h1>
+      <div class="subtitle">Light UI — sequential questions, Part2 requires 2 minutes speaking. Dashboard bilan sinxron</div>
+
+      <div class="top-row">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="micTest" class="btn primary glow">Test Microphone</button>
+          <button id="openDashboard" class="btn">Open Dashboard</button>
+          <button id="restartBtn" class="btn ghost">Restart (clear saved)</button>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;flex:1">
+          <div class="small">Mic level</div>
+          <div class="meter" aria-hidden="true"><div id="liveLevel" class="level"></div></div>
+          <div id="levelLabel" class="small muted">Silent</div>
+        </div>
+
+        <div class="top-right">
+          <div class="small">Overall avg</div>
+          <div style="font-weight:800;font-size:18px" id="overallAvg">0.0</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="card-inner">
+          <div class="nav" role="tablist">
+            <div id="navP1" class="pill active">Part 1</div>
+            <div id="navP2" class="pill">Part 2</div>
+            <div id="navP3" class="pill">Part 3</div>
+          </div>
+
+          <div id="mainArea"></div>
+
+          <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
+            <button id="showResults" class="btn">Show Results</button>
+            <button id="reloadQ" class="btn">Reload Questions</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* Full speaking app:
+   - Loads questions from localStorage key speaking_questions_v1
+   - Sync via BroadcastChannel 'speaking_channel' (and storage fallback)
+   - Single-question sequential UI (Part1 and Part3 next/prev)
+   - Part2 requires recording >= 120s to be accepted
+   - Mic test (level meter)
+   - Animated waveform while recording (using WebAudio analyser)
+   - Restart clears stored transcripts/scores
+   - Download audio (objectURL) after recording saved
+*/
+
+/* KEYS & defaults */
+const QUESTIONS_KEY = 'speaking_questions_v1';
+const STORAGE_KEY   = 'speaking_app_v1';
+const BC_NAME       = 'speaking_channel';
+
+/* default questions */
+const DEFAULT = {
+  part1: [
+    "Did you have a favourite book when you were a child?",
+    "What kinds of books do you read for pleasure? Why?",
+    "Do you prefer physical books or e-books? Explain your reason."
+  ],
+  part2: [
+    "Describe a big city you would like to visit."
+  ],
+  part3: [
+    "Why do people move to big cities?",
+    "What problems do big cities face?",
+    "How can cities be made more livable?",
+    "Do you think technology improves city life? Why?"
+  ]
+};
+
+/* per-tab client id to avoid responding to our own storage writes */
+let CLIENT_ID = sessionStorage.getItem('speaking_client_id');
+if(!CLIENT_ID){ CLIENT_ID = Math.random().toString(36).slice(2)+Date.now().toString(36); sessionStorage.setItem('speaking_client_id', CLIENT_ID); }
+
+/* state holders */
+let QUESTIONS = JSON.parse(JSON.stringify(DEFAULT));
+let STATE = null; // transcripts + scores
+let inMemoryAudio = {}; // { 'p1-0': objectURL, ... }
+
+/* audio & recognizer */
+let audioCtx = null, analyser = null, micStreamTest = null, rafId = null;
+let recorderStream = null, mediaRecorder = null;
+let recognizer = null, finalTranscript = '', interimTranscript = '';
+let isRecording = false, recStart = 0, recInterval = null;
+
+/* BroadcastChannel (if supported) */
+let bc = null;
+try{ bc = new BroadcastChannel(BC_NAME); bc.onmessage = onBroadcast; }catch(e){ bc = null; }
+
+/* DOM refs */
+const liveLevel = document.getElementById('liveLevel'), levelLabel = document.getElementById('levelLabel');
+const micTestBtn = document.getElementById('micTest'), openDashboardBtn = document.getElementById('openDashboard'), restartBtn = document.getElementById('restartBtn');
+const overallAvg = document.getElementById('overallAvg');
+const navP1 = document.getElementById('navP1'), navP2 = document.getElementById('navP2'), navP3 = document.getElementById('navP3');
+const mainArea = document.getElementById('mainArea');
+const showResultsBtn = document.getElementById('showResults'), reloadQBtn = document.getElementById('reloadQ');
+
+/* helper: escape */
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+
+/* Load questions from localStorage (published by dashboard) */
+function loadQuestions(){
+  try{
+    const raw = localStorage.getItem(QUESTIONS_KEY);
+    if(!raw){ QUESTIONS = JSON.parse(JSON.stringify(DEFAULT)); return; }
+    const parsed = JSON.parse(raw);
+    QUESTIONS.part1 = parsed.part1 && parsed.part1.length ? parsed.part1.slice() : DEFAULT.part1.slice();
+    QUESTIONS.part2 = parsed.part2 && parsed.part2.length ? parsed.part2.slice() : DEFAULT.part2.slice();
+    QUESTIONS.part3 = parsed.part3 && parsed.part3.length ? parsed.part3.slice() : DEFAULT.part3.slice();
+  }catch(e){
+    console.warn('loadQuestions error', e);
+    QUESTIONS = JSON.parse(JSON.stringify(DEFAULT));
+  }
+}
+
+/* load/save STATE (transcripts + scores) */
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw){
+      return {
+        p1Trans: Array(QUESTIONS.part1.length).fill(''),
+        p2Trans: Array(QUESTIONS.part2.length).fill(''),
+        p3Trans: Array(QUESTIONS.part3.length).fill(''),
+        p1Scores: Array(QUESTIONS.part1.length).fill(null),
+        p2Scores: Array(QUESTIONS.part2.length).fill(null),
+        p3Scores: Array(QUESTIONS.part3.length).fill(null),
+        meta: { updatedAt: Date.now() }
+      };
+    }
+    const parsed = JSON.parse(raw);
+    // ensure correct length
+    parsed.p1Trans = parsed.p1Trans || []; while(parsed.p1Trans.length < QUESTIONS.part1.length) parsed.p1Trans.push('');
+    parsed.p1Trans.length = QUESTIONS.part1.length;
+    parsed.p2Trans = parsed.p2Trans || []; while(parsed.p2Trans.length < QUESTIONS.part2.length) parsed.p2Trans.push('');
+    parsed.p2Trans.length = QUESTIONS.part2.length;
+    parsed.p3Trans = parsed.p3Trans || []; while(parsed.p3Trans.length < QUESTIONS.part3.length) parsed.p3Trans.push('');
+    parsed.p3Trans.length = QUESTIONS.part3.length;
+
+    parsed.p1Scores = parsed.p1Scores || []; while(parsed.p1Scores.length < QUESTIONS.part1.length) parsed.p1Scores.push(null);
+    parsed.p1Scores.length = QUESTIONS.part1.length;
+    parsed.p2Scores = parsed.p2Scores || []; while(parsed.p2Scores.length < QUESTIONS.part2.length) parsed.p2Scores.push(null);
+    parsed.p2Scores.length = QUESTIONS.part2.length;
+    parsed.p3Scores = parsed.p3Scores || []; while(parsed.p3Scores.length < QUESTIONS.part3.length) parsed.p3Scores.push(null);
+    parsed.p3Scores.length = QUESTIONS.part3.length;
+
+    parsed.meta = parsed.meta || { updatedAt: Date.now() };
+    return parsed;
+  }catch(e){
+    console.warn('loadState parse err', e);
+    return {
+      p1Trans: Array(QUESTIONS.part1.length).fill(''),
+      p2Trans: Array(QUESTIONS.part2.length).fill(''),
+      p3Trans: Array(QUESTIONS.part3.length).fill(''),
+      p1Scores: Array(QUESTIONS.part1.length).fill(null),
+      p2Scores: Array(QUESTIONS.part2.length).fill(null),
+      p3Scores: Array(QUESTIONS.part3.length).fill(null),
+      meta: { updatedAt: Date.now() }
+    };
+  }
+}
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); }catch(e){ console.warn('saveState failed', e); }
+}
+
+/* scoring & check (simple) */
+const COMMON = {"\\bim\\b":"I'm","\\bdont\\b":"don't","\\bcant\\b":"can't","\\bits\\b":"it's","\\bive\\b":"I've"};
+function aiCheck(text){
+  if(!text) return { corrected:'', issuesCount:0, wordCount:0, annotatedHTML:'<em>(no transcript)</em>' };
+  let t = text.trim().replace(/\s+/g,' ');
+  let corrected = t;
+  for(const p in COMMON){ corrected = corrected.replace(new RegExp(p,'gi'), COMMON[p]); }
+  corrected = corrected.charAt(0).toUpperCase() + corrected.slice(1);
+  if(!/[.?!]$/.test(corrected)) corrected += '.';
+  const orig = t.split(/\s+/);
+  const corr = corrected.replace(/[.?!]$/,'').split(/\s+/);
+  const len = Math.max(orig.length, corr.length);
+  let parts = [], issues=0;
+  for(let i=0;i<len;i++){
+    const o = orig[i]||'', c = corr[i]||'';
+    if(!o) parts.push(escapeHtml(c));
+    else if(o.trim().toLowerCase() === c.trim().toLowerCase()) parts.push(escapeHtml(c));
+    else { issues++; parts.push(`<span style="color:${'#e11d48'};font-weight:700">${escapeHtml(o)}</span>`); }
+  }
+  return { corrected, issuesCount: issues, wordCount: orig.filter(w=>w.trim()).length, annotatedHTML: parts.join(' ') };
+}
+function scoreTranscript(transcript, checkObj){
+  const words = checkObj.wordCount || (transcript ? transcript.split(/\s+/).length : 0);
+  const issues = checkObj.issuesCount || 0;
+  const wordRatio = Math.min(1, words/40);
+  const wordPoints = Math.round(wordRatio * 6);
+  const accuracy = words>0 ? Math.max(0, 1 - (issues / Math.max(1, Math.floor(words/5)))) : 0;
+  const accPoints = Math.round(accuracy * 3);
+  let raw = wordPoints + accPoints;
+  if(raw > 9) raw = 9;
+  if(words === 0) raw = 0;
+  return raw;
+}
+
+/* UI state for sequential display */
+let currentPart = 'p1';
+let idxP1 = 0, idxP3 = 0;
+
+/* render main area single-question view */
+function render(){
+  overallAvg.textContent = computeOverall();
+  // highlight nav
+  navP1.classList.toggle('active', currentPart==='p1');
+  navP2.classList.toggle('active', currentPart==='p2');
+  navP3.classList.toggle('active', currentPart==='p3');
+
+  // ensure STATE present
+  if(!STATE) STATE = loadState();
+
+  if(currentPart === 'p1'){
+    const q = QUESTIONS.part1[idxP1] || '(no question)';
+    mainArea.innerHTML = `
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><strong class="question-title">PART 1</strong><div class="muted" style="font-size:13px">Question ${idxP1+1} / ${QUESTIONS.part1.length}</div></div>
+          <div><span class="status-badge">${STATE.p1Scores[idxP1]!==null ? 'Score: '+STATE.p1Scores[idxP1] : (STATE.p1Trans[idxP1] ? 'Saved' : 'Not recorded')}</span></div>
+        </div>
+
+        <div class="question-title" style="margin-top:12px">${escapeHtml(q)}</div>
+
+        <div class="controls">
+          <button id="p1Play" class="btn">🔊 Listen</button>
+          <button id="p1Record" class="btn primary">${isRecording ? 'Stop' : '🎤 Record'}</button>
+          <div style="flex:1"></div>
+          <div id="p1Time" class="muted"></div>
+        </div>
+
+        <div class="progress"><div id="p1Bar" class="bar" style="width:0%"></div></div>
+
+        <div class="wave-wrap" style="display:none"><canvas id="wave"></canvas></div>
+
+        <div id="p1Download" class="download" style="margin-top:10px"></div>
+
+        <div id="p1Transcript" class="transcript" style="display:${STATE.p1Trans[idxP1]?'block':'none'}">
+          <div class="small muted">Saved transcript</div>
+          <div style="margin-top:6px">${escapeHtml(STATE.p1Trans[idxP1]||'')}</div>
+          <div style="margin-top:8px"><strong>Score:</strong> ${STATE.p1Scores[idxP1]!==null?STATE.p1Scores[idxP1]:'—'}</div>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button id="p1Prev" class="btn">◀ Prev</button>
+          <button id="p1Next" class="btn">Next ▶</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('p1Play').onclick = ()=> speakText(q);
+    document.getElementById('p1Record').onclick = ()=> { if(isRecording) stopRecording(); else startRecording('p1', idxP1, 90); };
+    document.getElementById('p1Next').onclick = ()=> { if(idxP1 < QUESTIONS.part1.length-1){ idxP1++; render(); } else { currentPart='p2'; render(); } };
+    document.getElementById('p1Prev').onclick = ()=> { if(idxP1>0){ idxP1--; render(); } };
+    // download link
+    const key = `p1-${idxP1}`; if(inMemoryAudio[key]) document.getElementById('p1Download').innerHTML = `<a href="${inMemoryAudio[key]}" download="${key}.webm" class="btn">⬇️ Download</a>`;
+  }
+  else if(currentPart === 'p2'){
+    const q = QUESTIONS.part2[0] || '(no cue)';
+    mainArea.innerHTML = `
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><strong class="question-title">PART 2 — Cue card</strong><div class="muted" style="font-size:13px">Prep 60s — Speak 120s</div></div>
+          <div><span class="status-badge">${STATE.p2Scores[0]!==null ? 'Score: '+STATE.p2Scores[0] : (STATE.p2Trans[0] ? 'Saved' : 'Not recorded')}</span></div>
+        </div>
+
+        <div class="question-title" style="margin-top:12px">${escapeHtml(q)}</div>
+
+        <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+          <div>Prep: <strong id="prepTimer">01:00</strong></div>
+          <button id="startPrep" class="btn">Start prep</button>
+          <div style="flex:1"></div>
+          <button id="p2Record" class="btn primary" disabled>🎤 Start speaking (2m)</button>
+        </div>
+
+        <div style="margin-top:10px">
+          <textarea id="p2Notes" placeholder="Write notes..." style="width:100%;min-height:90px;padding:10px;border-radius:10px;border:1px solid #eef6ff"></textarea>
+        </div>
+
+        <div class="progress"><div id="p2Bar" class="bar" style="width:0%"></div></div>
+
+        <div class="wave-wrap" style="display:none"><canvas id="wave"></canvas></div>
+
+        <div id="p2Download" class="download" style="margin-top:10px"></div>
+
+        <div id="p2Transcript" class="transcript" style="display:${STATE.p2Trans[0]?'block':'none'}">
+          <div class="small muted">Saved transcript</div>
+          <div style="margin-top:6px">${escapeHtml(STATE.p2Trans[0]||'')}</div>
+          <div style="margin-top:8px"><strong>Score:</strong> ${STATE.p2Scores[0]!==null ? STATE.p2Scores[0] : '—'}</div>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button id="p2ToP1" class="btn">Back: Part 1</button>
+          <button id="p2ToP3" class="btn">Next: Part 3</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('startPrep').onclick = startPrep;
+    document.getElementById('p2Record').onclick = ()=> { if(isRecording) stopRecording(); else startRecording('p2', 0, 120); };
+    document.getElementById('p2ToP1').onclick = ()=> { currentPart='p1'; render(); };
+    document.getElementById('p2ToP3').onclick = ()=> { currentPart='p3'; render(); };
+    // download
+    if(inMemoryAudio['p2-0']) document.getElementById('p2Download').innerHTML = `<a href="${inMemoryAudio['p2-0']}" download="p2_1.webm" class="btn">⬇️ Download</a>`;
+  }
+  else if(currentPart === 'p3'){
+    const q = QUESTIONS.part3[idxP3] || '(no question)';
+    mainArea.innerHTML = `
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><strong class="question-title">PART 3</strong><div class="muted" style="font-size:13px">Question ${idxP3+1} / ${QUESTIONS.part3.length}</div></div>
+          <div><span class="status-badge">${STATE.p3Scores[idxP3]!==null ? 'Score: '+STATE.p3Scores[idxP3] : (STATE.p3Trans[idxP3] ? 'Saved' : 'Not recorded')}</span></div>
+        </div>
+
+        <div class="question-title" style="margin-top:12px">${escapeHtml(q)}</div>
+
+        <div class="controls">
+          <button id="p3Play" class="btn">🔊 Listen</button>
+          <button id="p3Record" class="btn primary">${isRecording?'Stop':'🎤 Record'}</button>
+          <div style="flex:1"></div>
+          <div id="p3Time" class="muted"></div>
+        </div>
+
+        <div class="progress"><div id="p3Bar" class="bar" style="width:0%"></div></div>
+
+        <div class="wave-wrap" style="display:none"><canvas id="wave"></canvas></div>
+
+        <div id="p3Download" class="download" style="margin-top:10px"></div>
+
+        <div id="p3Transcript" class="transcript" style="display:${STATE.p3Trans[idxP3]?'block':'none'}">
+          <div class="small muted">Saved transcript</div>
+          <div style="margin-top:6px">${escapeHtml(STATE.p3Trans[idxP3]||'')}</div>
+          <div style="margin-top:8px"><strong>Score:</strong> ${STATE.p3Scores[idxP3]!==null?STATE.p3Scores[idxP3]:'—'}</div>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button id="p3Prev" class="btn">◀ Prev</button>
+          <button id="p3Next" class="btn">Next ▶</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('p3Play').onclick = ()=> speakText(q);
+    document.getElementById('p3Record').onclick = ()=> { if(isRecording) stopRecording(); else startRecording('p3', idxP3, 90); };
+    document.getElementById('p3Prev').onclick = ()=> { if(idxP3>0){ idxP3--; render(); } else { currentPart='p2'; render(); } };
+    document.getElementById('p3Next').onclick = ()=> { if(idxP3 < QUESTIONS.part3.length-1){ idxP3++; render(); } else { showResults(); } };
+    const key = `p3-${idxP3}`; if(inMemoryAudio[key]) document.getElementById('p3Download').innerHTML = `<a href="${inMemoryAudio[key]}" download="${key}.webm" class="btn">⬇️ Download</a>`;
+  }
+}
+
+/* compute overall average */
+function computeOverall(){
+  const arr = [...STATE.p1Scores, ...STATE.p2Scores, ...STATE.p3Scores].filter(v=>v!==null && v!==undefined);
+  if(arr.length===0) return '0.0';
+  return (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1);
+}
+
+/* Mic test: visual meter */
+function bytesToRMS(bytes){
+  let sum=0; for(let i=0;i<bytes.length;i++){ const v=(bytes[i]-128)/128; sum += v*v; } return Math.sqrt(sum/bytes.length);
+}
+async function startMicTest(){
+  try{
+    micStreamTest = await navigator.mediaDevices.getUserMedia({ audio:true });
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = audioCtx.createMediaStreamSource(micStreamTest);
+    analyser = audioCtx.createAnalyser(); analyser.fftSize = 2048;
+    src.connect(analyser);
+    const data = new Uint8Array(analyser.fftSize);
+    function tick(){
+      analyser.getByteTimeDomainData(data);
+      const rms = bytesToRMS(data);
+      const pct = Math.min(100, Math.round(rms*200));
+      liveLevel.style.width = pct + '%';
+      levelLabel.textContent = pct < 3 ? 'Silent' : 'Listening ('+pct+'%)';
+      rafId = requestAnimationFrame(tick);
+    }
+    tick();
+    micTestBtn.textContent = 'Stop Microphone Test';
+  }catch(e){
+    alert('Mikrofon olishda xatolik. Iltimos ruxsat bering yoki boshqa brauzerni ishlating.');
+  }
+}
+function stopMicTest(){
+  try{ if(micStreamTest){ micStreamTest.getTracks().forEach(t=>t.stop()); micStreamTest=null; } }catch(e){}
+  try{ if(audioCtx){ audioCtx.close(); audioCtx=null; } }catch(e){}
+  if(rafId) cancelAnimationFrame(rafId);
+  liveLevel.style.width = '0%';
+  levelLabel.textContent = 'Silent';
+  micTestBtn.textContent = 'Test Microphone';
+}
+micTestBtn.addEventListener('click', ()=> { if(!micStreamTest) startMicTest(); else stopMicTest(); });
+
+/* Open dashboard (best-effort) */
+openDashboardBtn.addEventListener('click', ()=>{
+  const u = 'dashboard.html';
+  const w = window.open(u, '_blank');
+  if(!w) alert('Please open dashboard.html manually (popup blocked)');
+});
+
+/* Restart clears storage & in-memory audio */
+restartBtn.addEventListener('click', ()=>{
+  if(!confirm('Restart: barcha saqlangan transcriptlar va ballar oʻchiriladi (localStorage). Davom etilsinmi?')) return;
+  stopRecordingImmediate();
+  // revoke object URLs
+  Object.values(inMemoryAudio).forEach(url => { try{ URL.revokeObjectURL(url); }catch(e){} });
+  inMemoryAudio = {};
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+  STATE = loadState();
+  saveState();
+  render();
+  alert('Barcha speaking maʼlumotlari o‘chirildi.');
+});
+
+/* SpeechRecognition initializer */
+function initRecognizer(lang='en-US'){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  if(!SR) return null;
+  try{
+    const r = new SR();
+    r.lang = lang;
+    r.interimResults = true;
+    r.continuous = true;
+    r.onresult = (ev)=>{
+      let interim = '';
+      for(let i=ev.resultIndex;i<ev.results.length;i++){
+        if(ev.results[i].isFinal) finalTranscript += ev.results[i][0].transcript + ' ';
+        else interim += ev.results[i][0].transcript + ' ';
+      }
+      interimTranscript = interim;
+      // show live transcript in any open transcript area
+      const liveArea = document.querySelector('.transcript');
+      if(liveArea){
+        const live = (finalTranscript + ' ' + interimTranscript).trim();
+        const div = liveArea.querySelector('div') || liveArea;
+        // We will show a small "Live" area if available
+        const existing = document.getElementById('liveTranscriptArea');
+        if(existing) existing.innerHTML = `<div class="small muted">Live</div><div style="margin-top:6px">${escapeHtml(live)}</div>`;
+      }
+    };
+    r.onerror = (e)=> console.warn('Recognition error', e);
+    return r;
+  }catch(e){
+    return null;
+  }
+}
+
+/* waveform drawing (shared) */
+let waveCanvas=null, waveCtx=null;
+function ensureWaveCanvas(){
+  const wrap = document.querySelector('.wave-wrap');
+  if(!wrap) return null;
+  waveCanvas = wrap.querySelector('#wave');
+  if(!waveCanvas) return null;
+  // set size
+  waveCanvas.width = waveCanvas.clientWidth * devicePixelRatio;
+  waveCanvas.height = 80 * devicePixelRatio;
+  waveCtx = waveCanvas.getContext('2d');
+  waveCtx.scale(devicePixelRatio, devicePixelRatio);
+  return waveCanvas;
+}
+function drawWave(analyser){
+  if(!waveCanvas || !waveCtx) ensureWaveCanvas();
+  if(!analyser || !waveCtx) return;
+  const bufferLength = analyser.fftSize;
+  const arr = new Uint8Array(bufferLength);
+  function frame(){
+    if(!isRecording || !analyser) return;
+    analyser.getByteTimeDomainData(arr);
+    const width = waveCanvas.clientWidth;
+    const height = 80;
+    waveCtx.clearRect(0,0,width,height);
+    waveCtx.lineWidth = 2;
+    waveCtx.strokeStyle = 'rgba(11,108,255,0.9)';
+    waveCtx.beginPath();
+    const sliceWidth = width / bufferLength;
+    let x=0;
+    for(let i=0;i<bufferLength;i++){
+      const v = arr[i] / 128.0; // 0..2
+      const y = v * height/2;
+      if(i===0) waveCtx.moveTo(x, y);
+      else waveCtx.lineTo(x, y);
+      x += sliceWidth;
+    }
+    waveCtx.stroke();
+    requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+/* start recording */
+async function startRecording(part, index, maxSeconds){
+  if(isRecording) return;
+  try{
+    recorderStream = await navigator.mediaDevices.getUserMedia({ audio:true });
+  }catch(e){
+    alert('Mikrofonga ruxsat yoʻq yoki mikrofon topilmadi.');
+    return;
+  }
+  recordedChunks = []; finalTranscript=''; interimTranscript='';
+  mediaRecorder = null;
+  try{ mediaRecorder = new MediaRecorder(recorderStream); }catch(e){ alert('MediaRecorder qoʻllab-quvvatlanmaydi.'); return; }
+
+  // init recognizer
+  recognizer = initRecognizer('en-US');
+  if(recognizer){ try{ recognizer.start(); }catch(e){} }
+
+  // audio analyser for waveform during recording
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  const src = audioCtx.createMediaStreamSource(recorderStream);
+  analyser = audioCtx.createAnalyser(); analyser.fftSize = 2048;
+  src.connect(analyser);
+  // display waveform area if present
+  const waveWrap = document.querySelector('.wave-wrap');
+  if(waveWrap){ waveWrap.style.display = 'block'; ensureWaveCanvas(); drawWave(analyser); }
+
+  mediaRecorder.ondataavailable = (ev)=> { if(ev.data && ev.data.size>0) recordedChunks.push(ev.data); };
+  mediaRecorder.onstop = ()=> {
+    isRecording = false;
+    // stop analyser visualization
+    // stop recognizer
+    if(recognizer){ try{ recognizer.stop(); }catch(e){} recognizer=null; }
+    // stop recorder stream
+    if(recorderStream){ try{ recorderStream.getTracks().forEach(t=>t.stop()); recorderStream=null; }catch(e){} }
+    // hide waveform wrapper
+    const waveWrap2 = document.querySelector('.wave-wrap'); if(waveWrap2) waveWrap2.style.display = 'none';
+    // clear interval
+    if(recInterval){ clearInterval(recInterval); recInterval=null; }
+    // compute duration
+    const duration = Math.floor((Date.now()-recStart)/1000);
+    if(part === 'p2' && duration < 120){
+      // discard
+      recordedChunks = [];
+      alert(`Part 2 uchun gapirish kamida 120 soniya bo'lishi kerak. Siz: ${duration}s. Audio qabul qilinmadi.`);
+      render();
+      return;
+    }
+    // save blob and transcript
+    const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+    const key = `${part}-${index}`;
+    if(inMemoryAudio[key]) try{ URL.revokeObjectURL(inMemoryAudio[key]); }catch(e){}
+    inMemoryAudio[key] = URL.createObjectURL(blob);
+    const transcript = (finalTranscript + ' ' + interimTranscript).trim();
+    const check = aiCheck(transcript);
+    const score = scoreTranscript(transcript, check);
+    if(part==='p1'){ STATE.p1Trans[index] = transcript; STATE.p1Scores[index] = score; }
+    else if(part==='p2'){ STATE.p2Trans[index] = transcript; STATE.p2Scores[index] = score; }
+    else if(part==='p3'){ STATE.p3Trans[index] = transcript; STATE.p3Scores[index] = score; }
+
+    STATE.meta = STATE.meta || {}; STATE.meta.updatedAt = Date.now();
+    saveState();
+    // show quick feedback
+    alert(`Recording saved. Duration: ${duration}s. Score: ${score}`);
+    render();
+  };
+
+  mediaRecorder.start();
+  isRecording = true;
+  recStart = Date.now();
+  // show rec dot
+  document.querySelectorAll('.rec-dot').forEach(n=>n.classList.add('recording'));
+  // start progress interval
+  recInterval = setInterval(()=>{
+    const elapsed = Math.floor((Date.now()-recStart)/1000);
+    const pct = Math.min(100, Math.round((elapsed/maxSeconds)*100));
+    if(part==='p1'){ const el = document.getElementById('p1Bar'); if(el) el.style.width = pct + '%'; const t = document.getElementById('p1Time'); if(t) t.textContent = `Recording: ${elapsed}s`; }
+    if(part==='p2'){ const el = document.getElementById('p2Bar'); if(el) el.style.width = pct + '%'; }
+    if(part==='p3'){ const el = document.getElementById('p3Bar'); if(el) el.style.width = pct + '%'; const t = document.getElementById('p3Time'); if(t) t.textContent = `Recording: ${elapsed}s`; }
+    if(elapsed >= maxSeconds){ try{ if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop(); }catch(e){} }
+  }, 250);
+}
+
+/* stop recording */
+function stopRecording(){
+  if(mediaRecorder && isRecording){
+    try{ mediaRecorder.stop(); }catch(e){}
+  }
+  // remove rec dot
+  document.querySelectorAll('.rec-dot').forEach(n=>n.classList.remove('recording'));
+  if(recInterval){ clearInterval(recInterval); recInterval=null; }
+}
+
+/* immediate stop (cleanup) */
+function stopRecordingImmediate(){
+  try{ if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop(); }catch(e){}
+  try{ if(recorderStream){ recorderStream.getTracks().forEach(t=>t.stop()); recorderStream=null; } }catch(e){}
+  try{ if(recInterval){ clearInterval(recInterval); recInterval=null; } }catch(e){}
+  if(recognizer){ try{ recognizer.stop(); }catch(e){} recognizer=null; }
+  isRecording = false;
+  document.querySelectorAll('.rec-dot').forEach(n=>n.classList.remove('recording'));
+}
+
+/* Part2 prep */
+let prepTimerHandle = null;
+function startPrep(){
+  const btn = document.getElementById('startPrep');
+  if(!btn) return;
+  btn.disabled = true;
+  let secs = 60;
+  const display = document.getElementById('prepTimer');
+  display.textContent = `01:00`;
+  const t = setInterval(()=>{
+    secs--;
+    display.textContent = `00:${String(secs).padStart(2,'0')}`;
+    if(secs <= 0){
+      clearInterval(t);
+      btn.disabled = false;
+      display.textContent = '00:00';
+      const recBtn = document.getElementById('p2Record');
+      if(recBtn){ recBtn.disabled = false; recBtn.focus(); }
+      alert('Prep tugadi. Endi 2 daqiqa gapiring (Recording tugagach faqat 120s yoki undan ortiq audio qabul qilinadi).');
+    }
+  }, 1000);
+  prepTimerHandle = t;
+}
+
+/* TTS speak */
+function speakText(text){
+  if(!text) return;
+  if('speechSynthesis' in window){
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US';
+    window.speechSynthesis.speak(u);
+  } else alert('Speech synthesis not supported');
+}
+
+/* show results in new tab */
+function showResults(){
+  let html = `<div style="font-family:Inter,arial;padding:18px"><h2>Results</h2>`;
+  let total=0, count=0;
+  html += '<h3>Part 1</h3>';
+  QUESTIONS.part1.forEach((q,i)=>{
+    const t = STATE.p1Trans[i] || '';
+    const sc = STATE.p1Scores[i] !== null ? STATE.p1Scores[i] : scoreTranscript(t, aiCheck(t));
+    if(typeof sc === 'number'){ total+=sc; count++; }
+    html += `<div style="margin-bottom:10px"><strong>Q${i+1}:</strong> ${escapeHtml(q)}<div style="margin-top:6px"><em>Transcript:</em> ${escapeHtml(t||'(no transcript)')}</div><div style="margin-top:6px"><em>Score:</em> ${sc}</div></div>`;
+  });
+  html += '<h3>Part 2</h3>';
+  QUESTIONS.part2.forEach((q,i)=>{
+    const t = STATE.p2Trans[i] || '';
+    const sc = STATE.p2Scores[i] !== null ? STATE.p2Scores[i] : scoreTranscript(t, aiCheck(t));
+    if(typeof sc === 'number'){ total+=sc; count++; }
+    html += `<div style="margin-bottom:10px"><strong>C${i+1}:</strong> ${escapeHtml(q)}<div style="margin-top:6px"><em>Transcript:</em> ${escapeHtml(t||'(no transcript)')}</div><div style="margin-top:6px"><em>Score:</em> ${sc}</div></div>`;
+  });
+  html += '<h3>Part 3</h3>';
+  QUESTIONS.part3.forEach((q,i)=>{
+    const t = STATE.p3Trans[i] || '';
+    const sc = STATE.p3Scores[i] !== null ? STATE.p3Scores[i] : scoreTranscript(t, aiCheck(t));
+    if(typeof sc === 'number'){ total+=sc; count++; }
+    html += `<div style="margin-bottom:10px"><strong>Q${i+1}:</strong> ${escapeHtml(q)}<div style="margin-top:6px"><em>Transcript:</em> ${escapeHtml(t||'(no transcript)')}</div><div style="margin-top:6px"><em>Score:</em> ${sc}</div></div>`;
+  });
+  const avg = count ? (total/count).toFixed(2) : '0.00';
+  html = `<div style="padding:12px"><strong>Overall average:</strong> ${avg} / 9</div>` + html;
+  const w = window.open('', '_blank', 'noopener');
+  if(w){ w.document.write(html); w.document.close(); } else alert('Pop-up blocked — allow to view results.');
+}
+
+/* Broadcast handler */
+function onBroadcast(ev){
+  try{
+    const msg = ev.data;
+    if(!msg) return;
+    if(msg.type === 'questions_updated'){
+      if(msg.sourceId === CLIENT_ID) return; // ignore own
+      // reload questions
+      loadQuestions();
+      STATE = loadState();
+      saveState();
+      render();
+      toast('Questions updated from Dashboard');
+    } else if(msg.type === 'questions_removed'){
+      loadQuestions();
+      STATE = loadState();
+      saveState();
+      render();
+      toast('Questions key removed — using defaults');
+    }
+  }catch(e){ console.warn(e); }
+}
+
+/* storage event fallback */
+window.addEventListener('storage', (e)=>{
+  if(e.key === QUESTIONS_KEY){
+    // ignore if it came from same tab (we still reload)
+    loadQuestions();
+    STATE = loadState();
+    saveState();
+    render();
+    toast('Questions updated (storage event)');
+  }
+});
+
+/* small toast */
+function toast(msg){
+  const el = document.createElement('div');
+  el.textContent = msg;
+  el.style.position='fixed'; el.style.bottom='20px'; el.style.right='20px'; el.style.background='#0652ff';
+  el.style.color='#fff'; el.style.padding='10px 14px'; el.style.borderRadius='10px'; el.style.boxShadow='0 8px 30px rgba(6,82,255,0.12)';
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .4s'; el.style.opacity='0'; setTimeout(()=>el.remove(),400); }, 2200);
+}
+
+/* nav clicks */
+navP1.addEventListener('click', ()=> { currentPart='p1'; render(); });
+navP2.addEventListener('click', ()=> { currentPart='p2'; render(); });
+navP3.addEventListener('click', ()=> { currentPart='p3'; render(); });
+
+/* reload questions button */
+reloadQBtn.addEventListener('click', ()=> { loadQuestions(); STATE = loadState(); saveState(); render(); toast('Questions reloaded'); });
+
+/* show results */
+showResultsBtn.addEventListener('click', showResults);
+
+/* init app */
+(function init(){
+  loadQuestions();
+  STATE = loadState();
+  saveState();
+  render();
+  // add a hidden rec-dot to header for animation
+  const dot = document.createElement('div'); dot.className='rec-dot'; dot.style.position='fixed'; dot.style.top='22px'; dot.style.right='22px'; dot.title='Recording indicator'; document.body.appendChild(dot);
+})();
+
+/* utility: direct Broadcast from dashboard (if dashboard supports BC) */
+// (dashboard is expected to write QUESTIONS_KEY; it may also postMessage via BroadcastChannel with type 'questions_updated' and sourceId)
+</script>
+</body>
+</html>
+
+
+

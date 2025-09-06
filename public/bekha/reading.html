@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Reading — passages (with Dashboard sync)</title>
+  <style>
+    :root {
+      --bg: #f5f8fb;
+      --card: #fff;
+      --accent: #0b6cff;
+      --muted: #6b7280;
+      --danger: #e11d48;
+      --success: #16a34a;
+      --glass: rgba(255,255,255,0.7);
+    }
+    *{box-sizing:border-box}
+    body{font-family:Inter, system-ui, Arial, sans-serif;background:var(--bg);margin:18px;color:#0b0b0b}
+    .card{max-width:980px;margin:0 auto;background:var(--card);padding:20px;border-radius:12px;box-shadow:0 8px 30px rgba(12,18,30,0.06)}
+    h1{margin:0 0 6px}
+    .small{color:var(--muted);font-size:13px}
+    .top{display:flex;gap:12px;align-items:center}
+    .btn{padding:8px 12px;border-radius:10px;border:0;cursor:pointer;box-shadow:0 6px 18px rgba(11,108,255,0.08);transition:transform .12s ease, box-shadow .12s ease}
+    .btn:hover{transform:translateY(-3px)}
+    .btn:active{transform:translateY(0)}
+    .btn.primary{background:var(--accent);color:#fff}
+    .btn.ghost{background:#fff;border:1px solid #e7eefc}
+    .meter{flex:1;height:12px;background:#eef2f6;border-radius:999px;overflow:hidden;display:flex;align-items:center;padding:2px}
+    .level{height:100%;width:0%;background:linear-gradient(90deg,#34d399,#10b981);border-radius:999px;transition:width .08s linear}
+    .panel{margin-top:14px}
+    .passage-card{padding:14px;border-radius:10px;background:linear-gradient(180deg,#ffffff,#fbfdff);border:1px solid #e6f0ff;box-shadow:0 6px 20px rgba(12,18,30,0.03)}
+    .passage-title{font-size:18px;font-weight:700}
+    .passage-text{margin-top:10px;line-height:1.7;color:#223}
+    .controls{margin-top:12px;display:flex;gap:8px;align-items:center}
+    .rec-indicator{display:flex;align-items:center;gap:8px}
+    .rec-dot{width:12px;height:12px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 rgba(225,29,72,0.2);opacity:0;transform:scale(.9)}
+    .rec-dot.on{animation:pulse 900ms infinite;opacity:1;transform:scale(1)}
+    @keyframes pulse{
+      0%{transform:scale(1);box-shadow:0 0 0 0 rgba(225,29,72,0.25)}
+      70%{transform:scale(1.35);box-shadow:0 0 0 12px rgba(225,29,72,0)}
+      100%{transform:scale(1);box-shadow:0 0 0 0 rgba(225,29,72,0)}
+    }
+    .recording-bar{height:10px;background:#f3f3f3;border-radius:999px;overflow:hidden;width:200px}
+    .recording-bar > .bar{height:100%;width:0%;background:linear-gradient(90deg,#ffb84d,#ff8a00);transition:width .16s linear}
+    .transcript{margin-top:12px;padding:10px;border-radius:8px;border:1px solid #eee;background:#fff}
+    .badge{padding:6px 10px;border-radius:999px;background:#eef2ff;border:1px solid #dbeafe;font-size:13px}
+    .nav{display:flex;gap:8px;margin-top:12px}
+    .animated-btn{position:relative;overflow:hidden}
+    .animated-btn::after{content:'';position:absolute;left:0;top:0;width:0;height:100%;background:rgba(255,255,255,0.08);transition:width .25s}
+    .animated-btn:hover::after{width:100%}
+    .meta{margin-top:10px;font-size:13px;color:var(--muted)}
+    .flash{animation:flash 1s ease}
+    @keyframes flash{0%{background:rgba(11,108,255,0.08)}100%{background:transparent}}
+    /* responsive */
+    @media (max-width:720px){ .top{flex-direction:column;align-items:stretch} .controls{flex-direction:column;align-items:stretch} .recording-bar{width:100%} }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div>
+        <h1>Reading Practice</h1>
+        <div class="small">Dashboard bilan sinxron — passages (matnlar) va savollarni Dashboard o‘zgartirsa sahifa avtomatik yangilanadi.</div>
+      </div>
+
+      <div style="flex:1"></div>
+
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="openDashboard" class="btn ghost">Open Dashboard</button>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+      <button id="micTest" class="btn primary animated-btn">Test Microphone</button>
+      <div style="display:flex;align-items:center;gap:10px;flex:1">
+        <div class="small">Input level</div>
+        <div class="meter" aria-hidden="true"><div id="liveLevel" class="level"></div></div>
+        <div id="levelLabel" class="small">Silent</div>
+      </div>
+      <div>Overall: <strong id="overallScore">0.0</strong></div>
+    </div>
+
+    <div id="panel" class="panel">
+      <!-- dynamic content -->
+    </div>
+
+    <div class="meta" id="metaInfo">Loading passages…</div>
+  </div>
+
+<script>
+/* reading.html
+   - Loads passages from localStorage key reading_passages_v1 (written by dashboard)
+   - Keeps reading internal data in reading_app_v1 (transcripts & scores)
+   - Presents one passage at a time (ketma-ket), user can Play (TTS), Record reading
+   - Recording shows animated indicator; for each passage we compute estimated reading time.
+   - If recorded duration is too short (<80% of estimated time) recording is considered INVALID.
+   - Dashboard updates are listened via storage event (auto-reload)
+*/
+
+/* Keys */
+const PASSAGES_KEY = 'reading_passages_v1';
+const APP_KEY = 'reading_app_v1';
+const CLIENT_KEY = 'reading_client_id';
+
+/* create client id (session specific) */
+let CLIENT_ID = sessionStorage.getItem(CLIENT_KEY);
+if(!CLIENT_ID){ CLIENT_ID = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem(CLIENT_KEY, CLIENT_ID); }
+
+/* defaults */
+const DEFAULT_PASSAGES = [
+  { title: 'A Small Town', text: 'Once upon a time in a small town, people greeted each other with warmth. The streets were lined with trees and the markets smelled of fresh bread.' , questions: ['Where is the story set?','What did the markets smell of?'] },
+  { title: 'Technology Today', text: 'Technology has changed how we communicate. Mobile phones and the internet make it possible to connect with people across the world instantly.' , questions: ['What changed how we communicate?','Give two examples of technologies mentioned.'] }
+];
+
+/* state */
+let PASSAGES = [];
+let STATE = null; // loaded from APP_KEY
+let currentIndex = 0;
+
+/* UI refs */
+const panel = document.getElementById('panel'), metaInfo = document.getElementById('metaInfo');
+const liveLevelEl = document.getElementById('liveLevel'), levelLabel = document.getElementById('levelLabel');
+const micTestBtn = document.getElementById('micTest'), openDashboardBtn = document.getElementById('openDashboard');
+const overallScoreEl = document.getElementById('overallScore');
+
+/* mic test vars */
+let audioCtx=null, analyser=null, micStream=null, rafId=null;
+function bytesToRMS(bytes){ let sum=0; for(let i=0;i<bytes.length;i++){ const v=(bytes[i]-128)/128; sum+=v*v; } return Math.sqrt(sum/bytes.length); }
+async function startMicTest(){ try{ micStream = await navigator.mediaDevices.getUserMedia({audio:true}); audioCtx = new (window.AudioContext||window.webkitAudioContext)(); const src = audioCtx.createMediaStreamSource(micStream); analyser = audioCtx.createAnalyser(); analyser.fftSize=2048; src.connect(analyser); const data = new Uint8Array(analyser.fftSize); function tick(){ analyser.getByteTimeDomainData(data); const rms = bytesToRMS(data); const pct = Math.min(100, Math.round(rms*200)); liveLevelEl.style.width = pct + '%'; levelLabel.textContent = pct < 3 ? 'Silent' : 'Listening ('+pct+'%)'; rafId = requestAnimationFrame(tick); } tick(); micTestBtn.textContent='Stop Microphone Test'; }catch(e){ alert('Mikrofonga ruxsat yo‘q yoki brauzer qo‘llab-quvvatlanmaydi.'); }}
+function stopMicTest(){ try{ if(micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream=null; } }catch(e){} try{ if(audioCtx){ audioCtx.close(); audioCtx=null; } }catch(e){} if(rafId) cancelAnimationFrame(rafId); liveLevelEl.style.width='0%'; levelLabel.textContent='Silent'; micTestBtn.textContent='Test Microphone'; }
+micTestBtn.addEventListener('click', ()=> { if(!micStream) startMicTest(); else stopMicTest(); });
+
+openDashboardBtn.addEventListener('click', ()=> {
+  // try to open reading_dashboard.html in new tab
+  const url = location.pathname.replace(/[^/]*$/, '') + 'reading_dashboard.html';
+  window.open(url, '_blank');
+});
+
+/* load passages from storage */
+function loadPassages(){
+  try{
+    const raw = localStorage.getItem(PASSAGES_KEY);
+    if(!raw){ PASSAGES = DEFAULT_PASSAGES.slice(); return; }
+    const parsed = JSON.parse(raw);
+    if(!parsed || !Array.isArray(parsed)) PASSAGES = DEFAULT_PASSAGES.slice();
+    else PASSAGES = parsed.map(p=>({ title: p.title||'(untitled)', text: p.text||'', questions: p.questions && Array.isArray(p.questions) ? p.questions.slice() : [] }));
+  }catch(e){
+    console.warn('loadPassages error', e);
+    PASSAGES = DEFAULT_PASSAGES.slice();
+  }
+}
+
+/* load internal state */
+function loadState(){
+  try{
+    const raw = localStorage.getItem(APP_KEY);
+    if(!raw){
+      return { transcripts: Array(PASSAGES.length).fill(''), scores: Array(PASSAGES.length).fill(null), meta:{updatedAt:Date.now()} };
+    }
+    const parsed = JSON.parse(raw);
+    parsed.transcripts = parsed.transcripts || [];
+    parsed.scores = parsed.scores || [];
+    while(parsed.transcripts.length < PASSAGES.length) parsed.transcripts.push('');
+    while(parsed.scores.length < PASSAGES.length) parsed.scores.push(null);
+    parsed.transcripts.length = PASSAGES.length; parsed.scores.length = PASSAGES.length;
+    parsed.meta = parsed.meta || {updatedAt:Date.now()};
+    return parsed;
+  }catch(e){
+    console.warn('loadState error', e);
+    return { transcripts: Array(PASSAGES.length).fill(''), scores: Array(PASSAGES.length).fill(null), meta:{updatedAt:Date.now()} };
+  }
+}
+function saveState(s){
+  try{ s.meta = s.meta || {}; s.meta.updatedAt = Date.now(); s.meta.sourceId = CLIENT_ID; localStorage.setItem(APP_KEY, JSON.stringify(s)); }catch(e){ console.warn('saveState error', e); }
+}
+
+/* compute overall score */
+function computeOverall(){
+  const arr = STATE.scores.filter(v=>v!==null && v!==undefined);
+  if(arr.length===0) return '0.0';
+  return (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1);
+}
+
+/* render current passage (one at a time) */
+function render(){
+  loadPassages();
+  STATE = loadState();
+  overallScoreEl.textContent = computeOverall();
+  metaInfo.textContent = `Loaded ${PASSAGES.length} passages. Last saved: ${STATE.meta && STATE.meta.updatedAt ? new Date(STATE.meta.updatedAt).toLocaleString() : '(never)'}`;
+
+  // clamp index
+  if(currentIndex >= PASSAGES.length) currentIndex = Math.max(0, PASSAGES.length-1);
+  const p = PASSAGES[currentIndex];
+  const savedTranscript = STATE.transcripts[currentIndex] || '';
+  const savedScore = STATE.scores[currentIndex];
+
+  panel.innerHTML = `
+    <div class="passage-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="passage-title">Passage ${currentIndex+1} / ${PASSAGES.length} — ${escapeHtml(p.title)}</div>
+          <div class="small" style="margin-top:6px">Estimated reading time: <strong id="estTime">--</strong> sec</div>
+        </div>
+        <div>
+          <div class="badge">${savedScore !== null ? 'Score: ' + savedScore : (savedTranscript ? 'Recorded' : 'Not recorded')}</div>
+        </div>
+      </div>
+      <div class="passage-text" id="passageText">${escapeHtml(p.text)}</div>
+
+      <div class="controls">
+        <button id="playBtn" class="btn ghost animated-btn">🔊 Play (TTS)</button>
+        <button id="recordBtn" class="btn primary animated-btn">🎤 Start recording</button>
+
+        <div style="flex:1"></div>
+
+        <div class="rec-indicator">
+          <div id="recDot" class="rec-dot" title="Recording indicator"></div>
+          <div class="recording-bar" aria-hidden="true"><div id="recBar" class="bar"></div></div>
+        </div>
+      </div>
+
+      <div id="transcriptBox" class="transcript" style="display:${savedTranscript ? 'block' : 'none'}">
+        <div class="small">Transcript (saved)</div>
+        <div id="transcriptText" style="margin-top:8px">${escapeHtml(savedTranscript) || ''}</div>
+      </div>
+
+      <div class="nav">
+        <button id="prevBtn" class="btn ghost">← Previous</button>
+        <button id="nextBtn" class="btn ghost">Next →</button>
+        <div style="flex:1"></div>
+        <button id="downloadBtn" class="btn">⬇️ Download audio</button>
+      </div>
+
+      <div style="margin-top:10px" class="small">
+        Questions: ${p.questions.length ? '<ul style="margin:6px 0 0 18px;padding:0">' + p.questions.map(q=>`<li>${escapeHtml(q)}</li>`).join('') + '</ul>' : '<em>No questions</em>'}
+      </div>
+    </div>
+  `;
+
+  // compute estimated reading time (seconds) - simple heuristic: words / 2.5
+  const words = (p.text || '').trim().split(/\s+/).filter(Boolean).length;
+  const est = Math.max(8, Math.round(words / 2.5));
+  document.getElementById('estTime').textContent = est;
+
+  // wire controls
+  document.getElementById('playBtn').addEventListener('click', ()=> speakText(p.text));
+  document.getElementById('recordBtn').addEventListener('click', recordToggleHandler);
+  document.getElementById('prevBtn').addEventListener('click', ()=> { if(currentIndex>0){ currentIndex--; render(); } });
+  document.getElementById('nextBtn').addEventListener('click', ()=> { if(currentIndex < PASSAGES.length-1){ currentIndex++; render(); } else alert('Oxiri bolib qoldi.'); });
+  document.getElementById('downloadBtn').addEventListener('click', ()=> {
+    // download last recorded audio if exists in-memory URL store (we will store blob URLs in-memory map)
+    const key = 'r-audio-'+currentIndex;
+    if(window._READING_AUDIO && window._READING_AUDIO[key]){
+      const a = document.createElement('a'); a.href = window._READING_AUDIO[key]; a.download = `passage_${currentIndex+1}.webm`; a.click();
+    } else alert('Hech qanday audio topilmadi. Avval yozib oling.');
+  });
+}
+
+/* Text-to-speech */
+function speakText(text){
+  if(!text) return;
+  if('speechSynthesis' in window){
+    window.speechSynthesis.cancel();
+    const ut = new SpeechSynthesisUtterance(text);
+    ut.lang = 'en-US';
+    ut.rate = 0.95;
+    window.speechSynthesis.speak(ut);
+  } else alert('Speech synthesis not supported.');
+}
+
+/* Recording logic */
+let mediaRecorder = null, recChunks = [], recStart=0, recInterval=null;
+async function recordToggleHandler(){
+  const btn = document.getElementById('recordBtn');
+  if(mediaRecorder && mediaRecorder.state === 'recording'){
+    // stop
+    mediaRecorder.stop();
+    return;
+  }
+  // start
+  try{
+    const s = await navigator.mediaDevices.getUserMedia({ audio:true });
+    const stream = s;
+    mediaRecorder = new MediaRecorder(stream);
+    recChunks = [];
+    mediaRecorder.ondataavailable = (ev)=> { if(ev.data && ev.data.size>0) recChunks.push(ev.data); };
+    mediaRecorder.onstop = ()=> {
+      // finalize
+      const blob = new Blob(recChunks, { type:'audio/webm' });
+      const url = URL.createObjectURL(blob);
+      window._READING_AUDIO = window._READING_AUDIO || {};
+      window._READING_AUDIO['r-audio-'+currentIndex] = url;
+      // compute transcript from SpeechRecognition results (we used recognizerLocal to store final transcript in window.__finalReadingTranscript)
+      const transcript = (window.__finalReadingTranscript || '').trim();
+      const wordsCount = transcript ? transcript.split(/\s+/).filter(Boolean).length : 0;
+      // compute estimated reading time again
+      const passageText = PASSAGES[currentIndex].text || '';
+      const estSeconds = Math.max(8, Math.round((passageText.trim().split(/\s+/).filter(Boolean).length) / 2.5));
+      const recordedSeconds = Math.max(0, Math.round((Date.now() - recStart) / 1000));
+      const required = Math.ceil(estSeconds * 0.8); // require at least 80% of estimated reading time
+      const accepted = recordedSeconds >= required;
+      if(!accepted){
+        alert(`Recording too short (${recordedSeconds}s). Required at least ${required}s (≈80% of estimated ${estSeconds}s). Recording not saved as final.`);
+        // still show transcript but mark as not accepted (do not save score)
+        // optionally keep in-state as tentative (we leave state unchanged)
+      } else {
+        // simple check & score: reuse aiCheck/score heuristics
+        const check = aiCheck(transcript);
+        const score = scoreTranscriptLevel(transcript, check);
+        STATE.transcripts[currentIndex] = transcript;
+        STATE.scores[currentIndex] = score;
+        saveState(STATE);
+        // show flash
+        panel.querySelector('.passage-card').classList.add('flash');
+        setTimeout(()=> panel.querySelector('.passage-card').classList.remove('flash'), 900);
+      }
+
+      // update UI: show transcript box (even if short)
+      const tBox = document.getElementById('transcriptBox');
+      if(tBox){
+        tBox.style.display = 'block';
+        document.getElementById('transcriptText').textContent = transcript || '(empty)';
+      }
+      // cleanup tracks
+      try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+      if(recInterval){ clearInterval(recInterval); recInterval=null; }
+      document.getElementById('recDot').classList.remove('on');
+      document.getElementById('recBar').style.width = '0%';
+      btn.textContent = '🎤 Start recording';
+      overallScoreEl.textContent = computeOverall();
+      window.__finalReadingTranscript = '';
+      window.__interimReadingTranscript = '';
+    };
+
+    // start SpeechRecognition to capture transcript live
+    if(window.SpeechRecognition || window.webkitSpeechRecognition){
+      try{
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognizer = new SR();
+        recognizer.lang = 'en-US';
+        recognizer.interimResults = true;
+        recognizer.continuous = true;
+        window.__finalReadingTranscript = '';
+        window.__interimReadingTranscript = '';
+        recognizer.onresult = (ev)=> {
+          let interim = '';
+          for(let i=ev.resultIndex;i<ev.results.length;i++){
+            if(ev.results[i].isFinal) window.__finalReadingTranscript += ev.results[i][0].transcript + ' ';
+            else interim += ev.results[i][0].transcript + ' ';
+          }
+          window.__interimReadingTranscript = interim;
+          // show live interim in transcript box
+          const tBox = document.getElementById('transcriptBox');
+          if(tBox){
+            tBox.style.display = 'block';
+            document.getElementById('transcriptText').textContent = (window.__finalReadingTranscript + window.__interimReadingTranscript).trim();
+          }
+        };
+        recognizer.onerror = (e)=> console.warn('SR error', e);
+        recognizer.start();
+        // store on recorder for stopping later
+        mediaRecorder._recognizer = recognizer;
+      }catch(e){
+        console.warn('Could not start SpeechRecognition', e);
+      }
+    } else {
+      // no recognizer — will still record audio
+      window.__finalReadingTranscript = '';
+      window.__interimReadingTranscript = '';
+      const tBox = document.getElementById('transcriptBox');
+      if(tBox) { tBox.style.display = 'block'; document.getElementById('transcriptText').textContent = '(SpeechRecognition not supported in this browser)'; }
+    }
+
+    // start mediaRecorder
+    mediaRecorder.start();
+    recStart = Date.now();
+    // animate UI
+    document.getElementById('recordBtn').textContent = '■ Stop recording';
+    document.getElementById('recDot').classList.add('on');
+
+    // progress bar update
+    const passageText = PASSAGES[currentIndex].text || '';
+    const estSeconds = Math.max(8, Math.round((passageText.trim().split(/\s+/).filter(Boolean).length) / 2.5));
+    const maxSeconds = Math.max(15, estSeconds * 2); // allow up to 2x estimated; but stop only manually or when mediaRecorder stop triggered by UI
+    recInterval = setInterval(()=>{
+      const elapsed = Math.floor((Date.now() - recStart) / 1000);
+      const pct = Math.min(100, Math.round((elapsed / maxSeconds) * 100));
+      document.getElementById('recBar').style.width = pct + '%';
+    }, 250);
+
+  }catch(e){
+    alert('Mikrofonga ruxsat yo‘q yoki qurilmada muammo bor.');
+  }
+}
+
+/* AI check & scoring (simple heuristics) */
+const COMMON = {"\\bim\\b":"I'm","\\bdont\\b":"don't","\\bcant\\b":"can't","\\bdoesnt\\b":"doesn't","\\bdidnt\\b":"didn't","\\bwont\\b":"won't"};
+function aiCheck(text){
+  if(!text) return {annotatedHTML:'<em>(no transcript)</em>', corrected:'', issuesCount:0, wordCount:0};
+  let t = text.trim().replace(/\s+/g,' ');
+  let corrected = t;
+  for(const k in COMMON){ try{ corrected = corrected.replace(new RegExp(k,'gi'), COMMON[k]); }catch(e){} }
+  corrected = corrected.charAt(0).toUpperCase() + corrected.slice(1);
+  if(!/[.?!]$/.test(corrected)) corrected += '.';
+  const origWords = t.split(/\s+/);
+  const corrWords = corrected.replace(/[.?!]$/,'').split(/\s+/);
+  const len = Math.max(origWords.length, corrWords.length);
+  let annotated = [], issues = 0;
+  for(let i=0;i<len;i++){
+    const o = origWords[i]||'', c = corrWords[i]||'';
+    if(!o) annotated.push(escapeHtml(c));
+    else if(o.trim().toLowerCase() === c.trim().toLowerCase()) annotated.push(escapeHtml(c));
+    else { issues++; annotated.push(`<span style="color:${'#e11d48'};font-weight:700">${escapeHtml(o)}</span>`); }
+  }
+  return { annotatedHTML: annotated.join(' '), corrected, issuesCount: issues, wordCount: origWords.filter(Boolean).length };
+}
+function scoreTranscriptLevel(transcript, checkObj){
+  const words = checkObj.wordCount || (transcript ? transcript.split(/\s+/).length : 0);
+  const issues = checkObj.issuesCount || 0;
+  const contentPoints = Math.min(6, Math.round((Math.min(words, 60) / 60) * 6));
+  const accuracy = words > 0 ? Math.max(0, 1 - (issues / Math.max(1, Math.floor(words/5)))) : 0;
+  const accPoints = Math.round(accuracy * 3);
+  let raw = contentPoints + accPoints;
+  if(raw > 9) raw = 9;
+  if(words === 0) raw = 0;
+  return raw;
+}
+
+/* simple escape */
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+
+/* storage listener: when dashboard updates PASSAGES_KEY, reload and rerender */
+window.addEventListener('storage', (e)=> {
+  if(e.key !== PASSAGES_KEY) return;
+  // ignore if change originated from this tab? We don't track source here for passages (safe to reload)
+  try{ loadPassages(); STATE = loadState(); render(); alert('Passages updated from dashboard — UI refreshed.'); }catch(err){ console.warn(err); }
+});
+
+/* beforeunload save */
+window.addEventListener('beforeunload', ()=> saveState(STATE) );
+
+/* initial load */
+loadPassages();
+STATE = loadState();
+render();
+
+</script>
+</body>
+</html>
