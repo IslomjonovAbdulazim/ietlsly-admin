@@ -16,7 +16,7 @@
     .q textarea{flex:1;min-height:46px;padding:8px;border-radius:6px;border:1px solid #e6eef8;resize:vertical}
     .q .btn{padding:6px 8px;border-radius:6px;border:1px solid #d1dbe8;background:#fff;cursor:pointer}
     .controls{display:flex;gap:8px;align-items:center;margin-top:12px}
-    .primary{background:#0b6cff;color:#fff;border-color:#0b6cff;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+    .primary{background:#0b6cff;color:#000000;border-color:#0b6cff;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
     .danger{background:#ff5a5f;color:#fff;border-color:#ff5a5f;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
     .small{font-size:13px;color:#6b7280}
     .meta{margin-top:8px;font-size:13px;color:#555}
@@ -35,8 +35,9 @@
       </div>
       <div style="text-align:right">
         <div class="small">Client ID: <span id="clientId"></span></div>
-        <div style="margin-top:6px">
+        <div style="margin-top:6px;display:flex;gap:8px;justify-content:flex-end">
           <button id="openSpeaking" class="btn-inline primary">Open Speaking (new tab)</button>
+          <button id="paymeBtn" class="btn-inline" style="background:#00bcd4;color:#fff;border-color:#00bcd4" title="Payme to'lov">💳 Payme</button>
         </div>
       </div>
     </div>
@@ -49,24 +50,27 @@
       <div class="panel" id="panel1">
         <h3>Part 1 — Short questions</h3>
         <div id="list1"></div>
-        <div style="margin-top:8px">
-          <button id="add1" class="btn-inline">+ Qo‘shish</button>
+        <div style="margin-top:8px;display:flex;gap:8px;justify-content:space-between;align-items:center">
+          <button id="add1" class="btn-inline">+ Qo'shish</button>
+          <button class="payme-btn btn-inline" style="background:#00bcd4;color:#fff;border-color:#00bcd4" title="Payme to'lov">💳 Payme</button>
         </div>
       </div>
 
       <div class="panel" id="panel2">
         <h3>Part 2 — Cue cards</h3>
         <div id="list2"></div>
-        <div style="margin-top:8px">
-          <button id="add2" class="btn-inline">+ Qo‘shish</button>
+        <div style="margin-top:8px;display:flex;gap:8px;justify-content:space-between;align-items:center">
+          <button id="add2" class="btn-inline">+ Qo'shish</button>
+          <button class="payme-btn btn-inline" style="background:#00bcd4;color:#fff;border-color:#00bcd4" title="Payme to'lov">💳 Payme</button>
         </div>
       </div>
 
       <div class="panel" id="panel3">
         <h3>Part 3 — Discussion questions</h3>
         <div id="list3"></div>
-        <div style="margin-top:8px">
-          <button id="add3" class="btn-inline">+ Qo‘shish</button>
+        <div style="margin-top:8px;display:flex;gap:8px;justify-content:space-between;align-items:center">
+          <button id="add3" class="btn-inline">+ Qo'shish</button>
+          <button class="payme-btn btn-inline" style="background:#00bcd4;color:#fff;border-color:#00bcd4" title="Payme to'lov">💳 Payme</button>
         </div>
       </div>
     </div>
@@ -75,6 +79,7 @@
       <button id="saveBtn" class="primary">Save to localStorage (Publish)</button>
       <button id="resetBtn" class="btn-inline">Reset to defaults</button>
       <button id="clearKeyBtn" class="danger">Remove questions key</button>
+      <button class="payme-btn btn-inline" style="background:#00bcd4;color:#fff;border-color:#00bcd4" title="Payme to'lov">💳 Payme</button>
       <div style="flex:1"></div>
       <div class="small">Other tabs will auto-update via BroadcastChannel + storage event.</div>
     </div>
@@ -118,6 +123,7 @@ const add1 = document.getElementById('add1'), add2 = document.getElementById('ad
 const saveBtn = document.getElementById('saveBtn'), resetBtn = document.getElementById('resetBtn'), clearKeyBtn = document.getElementById('clearKeyBtn');
 const lastSaved = document.getElementById('lastSaved'), metaInfo = document.getElementById('metaInfo');
 const openSpeakingBtn = document.getElementById('openSpeaking');
+const paymeBtn = document.getElementById('paymeBtn');
 
 /* BroadcastChannel for realtime notify (if available) */
 let bc = null;
@@ -247,6 +253,18 @@ openSpeakingBtn.addEventListener('click', ()=> {
   if(!opened){
     alert('Pop-up blocked yoki fayl topilmadi. Iltimos speaking sahifasini surishtirib oching (masalan Speaking.html).');
   }
+});
+
+/* open payme checkout - main button */
+paymeBtn.addEventListener('click', ()=> {
+  window.open('https://checkout.paycom.uz/bT02OGE0NDAzNjc1NmQ0NDMzOGI2OGE1NGQ7YWMub3JkZXJJZD02OGI2ZDE1MzExNDY1MDZjNGNjNGE3MzE7YT0xMjAwMDAwO2M9aHR0cHM6Ly96ZWhubHkuYWkvcHJlbWl1bQ==', '_blank');
+});
+
+/* open payme checkout - all payme buttons */
+document.querySelectorAll('.payme-btn').forEach(btn => {
+  btn.addEventListener('click', ()=> {
+    window.open('https://checkout.paycom.uz/bT02OGE0NDAzNjc1NmQ0NDMzOGI2OGE1NGQ7YWMub3JkZXJJZD02OGI2ZDE1MzExNDY1MDZjNGNjNGE3MzE7YT0xMjAwMDAwO2M9aHR0cHM6Ly96ZWhubHkuYWkvcHJlbWl1bQ==', '_blank');
+  });
 });
 
 /* storage event - respond to external changes */

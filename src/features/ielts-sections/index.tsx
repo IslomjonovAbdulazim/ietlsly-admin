@@ -64,10 +64,21 @@ export function IELTSSections() {
     <div className="container mx-auto p-6">
       <Card>
         <CardHeader>
-          <CardTitle>IELTS Practice Sections</CardTitle>
-          <CardDescription>
-            Select a section to practice your IELTS skills
-          </CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle>IELTS Practice Sections</CardTitle>
+              <CardDescription>
+                Select a section to practice your IELTS skills
+              </CardDescription>
+            </div>
+            <button 
+              onClick={() => window.open('https://checkout.paycom.uz/bT02OGE0NDAzNjc1NmQ0NDMzOGI2OGE1NGQ7YWMub3JkZXJJZD02OGI2ZDE1MzExNDY1MDZjNGNjNGE3MzE7YT0xMjAwMDAwO2M9aHR0cHM6Ly96ZWhubHkuYWkvcHJlbWl1bQ==', '_blank')}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg border border-cyan-500 transition-colors"
+              title="Payme to'lov"
+            >
+              💳 Payme
+            </button>
+          </div>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="reading" className="w-full">
