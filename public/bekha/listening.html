@@ -1,533 +1,462 @@
 <!doctype html>
 <html lang="uz">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Listening — Test (Parts + Auto Mode + CSV)</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Listening Test — Full</title>
   <style>
     :root{
-      --bg:#f6f9ff; --card:#fff; --accent1:#0b6cff; --accent2:#0066ff; --muted:#6b7280;
-      --success:#10b981; --danger:#ef4444; --glass: rgba(11,108,255,0.06);
+      --bg:#f7fbff; --card:#fff; --accent:#0b6cff; --accent2:#07b39b; --muted:#6b7280; --danger:#e11d48;
+      --radius:12px;
     }
     *{box-sizing:border-box}
-    body{margin:18px;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#f7fbff 0%, #eef6ff 100%);color:#071229}
-    .wrap{max-width:1100px;margin:0 auto}
-    .card{background:var(--card);padding:20px;border-radius:14px;border:1px solid rgba(8,32,80,0.04);box-shadow:0 12px 36px rgba(11,108,255,0.05)}
-    h1{margin:0 0 6px;font-size:22px}
-    .lead{color:var(--muted);font-size:13px;margin-bottom:12px}
-    .topbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-    .btn{padding:10px 14px;border-radius:10px;border:0;background:#fff;cursor:pointer;box-shadow:0 6px 18px rgba(11,108,255,0.04);transition:all .14s;font-weight:600}
-    .btn:hover{transform:translateY(-3px)}
-    .btn.ghost{background:transparent;border:1px solid #e6f0ff;box-shadow:none}
-    .btn.primary{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#fff}
-    .btn.warn{background:#ffb84d;color:#fff}
-    .settings{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .select, input[type="number"]{padding:8px;border-radius:8px;border:1px solid #e6f0ff}
-    .meter{flex:1;height:10px;background:#eef6ff;border-radius:999px;overflow:hidden}
-    .level{height:100%;width:0%;background:linear-gradient(90deg,#34d399,#10b981);transition:width .08s linear}
-    .panel{margin-top:10px}
-    .qcard{padding:18px;border-radius:12px;border:1px solid #e8f0ff;background:linear-gradient(180deg,#fff,#fbfeff);display:flex;flex-direction:column;gap:12px}
-    .qhead{display:flex;justify-content:space-between;align-items:center;gap:10px}
-    .qtitle{font-size:18px;font-weight:700}
+    body{font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#eef7ff,#ffffff);margin:18px;color:#071232}
+    .container{max-width:1100px;margin:0 auto}
+    .card{background:var(--card);padding:20px;border-radius:var(--radius);box-shadow:0 12px 36px rgba(11,18,40,0.06)}
+    h1{margin:0}
+    .subtitle{color:var(--muted);font-size:13px;margin-top:6px}
+    .top{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap}
+    .btn{padding:10px 12px;border-radius:10px;border:0;background:var(--accent);color:#fff;cursor:pointer;font-weight:700;transition:transform .12s}
+    .btn.ghost{background:#fff;color:var(--accent);border:1px solid rgba(11,108,255,0.08)}
+    .btn.warn{background:var(--danger)}
+    .meter{flex:1;height:12px;background:#eef6ff;border-radius:999px;overflow:hidden}
+    .level{height:100%;width:0%;background:linear-gradient(90deg,#34d399,#10b981)}
     .small{font-size:13px;color:var(--muted)}
-    .playbtn{width:56px;height:56px;border-radius:999px;display:grid;place-items:center;background:linear-gradient(180deg,#fff,#f6fbff);border:1px solid #e6f0ff;cursor:pointer;transition:transform .12s}
-    .playbtn.playing{box-shadow:0 10px 30px rgba(11,108,255,0.12);transform:scale(1.05)}
-    .progress{height:10px;background:#f3f7ff;border-radius:999px;overflow:hidden}
-    .progress > .bar{height:100%;width:0%;background:linear-gradient(90deg,#ffb84d,#ff8a00);transition:width .12s linear}
-    .answer-row{display:flex;gap:12px;align-items:flex-start}
-    textarea{flex:1;min-height:140px;padding:12px;border-radius:10px;border:1px solid #e7f0ff;resize:vertical;font-size:14px}
-    .side{min-width:220px;display:flex;flex-direction:column;gap:10px}
-    .note{background:#fff7ed;border:1px solid #ffedd5;padding:10px;border-radius:10px;color:#92400e}
-    .controls-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .pager{display:flex;gap:8px;align-items:center}
-    .chip{padding:6px 10px;border-radius:999px;background:#eef6ff;color:var(--muted);font-size:13px}
-    .animated{opacity:0;transform:translateY(6px);animation:fadeIn .28s forwards}
-    @keyframes fadeIn{to{opacity:1;transform:none}}
-    .mobile-stack{display:flex;gap:8px}
-    .footer{margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
-    .csvbtn{background:#0b6cff;color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
-    .badge{padding:6px 8px;border-radius:8px;background:#eef2ff;border:1px solid #dbeafe}
-    .config{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    @media (max-width:820px){ .answer-row{flex-direction:column} .side{min-width:unset;width:100%} .topbar{flex-direction:column;align-items:stretch} }
+    .panel{margin-top:16px}
+    .card-inner{padding:16px;border-radius:10px;background:linear-gradient(180deg,#fff,#fcfeff);border:1px solid #eef6ff}
+    .nav{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+    .pill{padding:8px 12px;border-radius:999px;background:#fff;border:1px solid rgba(11,108,255,0.06);cursor:pointer}
+    .pill.active{background:linear-gradient(90deg,var(--accent),#0a5be6);color:#fff;transform:translateY(-3px)}
+    .question-box{margin-top:12px;padding:12px;border-radius:10px;border:1px solid #eef6ff;background:#fff}
+    .q-title{font-weight:700}
+    .controls{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
+    .progress{height:10px;background:#f3f6fb;border-radius:999px;overflow:hidden;margin-top:10px}
+    .progress .bar{height:100%;width:0%;background:linear-gradient(90deg,#ffb84d,#ff8a00);transition:width .12s linear}
+    .transcript{margin-top:12px;padding:12px;border-radius:10px;border:1px solid #eef6ff;background:linear-gradient(180deg,#fff,#fcfeff)}
+    .question-nav{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+    .animate-pulse{animation:pulse 1200ms infinite}
+    @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.03)}100%{transform:scale(1)}}
+    .wave{margin-top:12px;border-radius:10px;border:1px solid rgba(11,108,255,0.04);padding:8px;background:linear-gradient(180deg,#f8fbff,#fff)}
+    canvas#wave{width:100%;height:80px;display:block}
+    .choices{margin-top:10px}
+    .choice{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    .checkbox, .radio {width:18px;height:18px}
+    .select{padding:8px;border-radius:8px}
+    .footer{margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    @media (max-width:900px){ .top{flex-direction:column;align-items:stretch} .nav{justify-content:center} }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card animated">
-      <h1>Listening — Test (Parts, Auto Mode, CSV)</h1>
-      <div class="lead">Dashboard bilan sinxron — Dashboard-ga savollar qoʻshing (har bir part uchun). Testni avtomatik ham ishlatishingiz mumkin.</div>
+  <div class="container">
+    <div class="card">
+      <h1>Listening Test — Full</h1>
+      <div class="subtitle">Partlar: Part1..Part4 — har bir partga alohida passage (audio). Savollar ketma-ket taqdim etiladi.</div>
 
-      <div class="topbar">
-        <div style="display:flex;gap:8px;align-items:center">
-          <button id="openDashboard" class="btn ghost">Open Dashboard</button>
-          <button id="reloadBtn" class="btn">Reload questions</button>
-          <div class="settings">
-            <label class="small">Part:</label>
-            <select id="partSelect" class="select">
-              <option value="part1">Part 1</option>
-              <option value="part2">Part 2</option>
-              <option value="part3">Part 3</option>
-            </select>
-          </div>
+      <div class="top">
+        <button id="playPass" class="btn">Play Passage</button>
+        <button id="replayPass" class="btn ghost">Replay</button>
+        <button id="startAuto" class="btn ghost">Start Auto Test</button>
+        <button id="exportCSV" class="btn ghost">Export CSV</button>
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          <div class="small">Mic level (test)</div>
+          <div class="meter" aria-hidden="true"><div id="liveLevel" class="level"></div></div>
         </div>
-
-        <div style="display:flex;gap:12px;align-items:center">
-          <div class="config">
-            <label class="small">Time / q (s):</label>
-            <input id="timePerQ" type="number" min="5" max="600" step="5" value="60" style="width:90px" />
-            <label class="small">Auto-advance:</label>
-            <input id="autoAdvance" type="checkbox" checked />
-            <label class="small">Require listen %:</label>
-            <input id="listenPct" type="number" min="0" max="100" step="5" value="70" style="width:70px" />
-          </div>
-          <button id="startTest" class="btn primary">Start Test</button>
-          <button id="stopTest" class="btn warn">Stop Test</button>
+        <div id="scoreBox" style="text-align:right">
+          <div class="small">Progress</div>
+          <div id="progressCount" style="font-weight:800">0 / 40</div>
         </div>
       </div>
 
-      <div class="panel" id="mainPanel"></div>
+      <div class="panel">
+        <div class="card-inner">
+          <div class="nav">
+            <div class="pill active" data-part="part1">Part 1</div>
+            <div class="pill" data-part="part2">Part 2</div>
+            <div class="pill" data-part="part3">Part 3</div>
+            <div class="pill" data-part="part4">Part 4</div>
+          </div>
 
-      <div class="footer">
-        <div class="small">Answers stored locally (<code>listening_app_v1</code>). Questions key: <code>listening_questions_v1</code>.</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button id="exportCSV" class="csvbtn">Export answers CSV</button>
-          <div class="badge">Avg: <strong id="avgScore">0.0</strong></div>
+          <div id="contentArea"></div>
+
+          <div class="footer">
+            <div class="small muted">Tip: Passage-ni eshitib so‘ng savollarga javob bering. Replay bilan yana tinglashingiz mumkin.</div>
+            <div>
+              <button id="prevQ" class="btn ghost">◀ Prev</button>
+              <button id="nextQ" class="btn">Next ▶</button>
+            </div>
+          </div>
+
         </div>
       </div>
+
     </div>
   </div>
 
 <script>
-/* listening.html with Parts, Auto mode, CSV export */
-/* Keys */
-const QUESTIONS_KEY = 'listening_questions_v1';
-const APP_KEY = 'listening_app_v1';
+/* Listening app with Dashboard sync (localStorage key: speaking_listening_questions_v1)
+   - Uses SpeechSynthesis for audio playback (SpeechSynthesisUtterance)
+   - 4 parts, each with 10 questions (dashboard populates). If key missing, sample data used.
+   - Questions shown sequentially (single question view). Answer types: radio, multi (checkbox), opinion (list of bullets with checkboxes), select (dropdown).
+   - Auto test: will play passage and start timer (optional).
+   - Export CSV of answers.
+*/
 
-/* Default structure (parts) */
-const DEFAULT_QUESTIONS = {
-  part1: [
-    { text: "What colour was the car mentioned in the audio?", audioData: null, sampleAnswer: "red" },
-    { text: "What time did the speaker arrive?", audioData: null, sampleAnswer: "9 am" }
-  ],
-  part2: [
-    { text: "Describe the landscape the narrator mentioned.", audioData: null, sampleAnswer: "mountains and rivers" }
-  ],
-  part3: [
-    { text: "Why do people move to cities according to the speaker?", audioData: null, sampleAnswer: "work opportunities" },
-    { text: "How can urban life be improved?", audioData: null, sampleAnswer: "better public transport" }
-  ],
-  meta:{updatedAt: Date.now()}
+/* Keys & client id */
+const QUESTIONS_KEY = 'speaking_listening_questions_v1';
+let CLIENT_ID = sessionStorage.getItem('listening_client');
+if(!CLIENT_ID){ CLIENT_ID = Math.random().toString(36).slice(2)+Date.now().toString(36); sessionStorage.setItem('listening_client', CLIENT_ID); }
+
+/* default/sample (matches dashboard sample) */
+let DATA = null;
+const DEFAULT = {
+  part1: { passage: "This is Part 1 sample passage. Listen and answer short multiple choice questions. The lighthouse was built in the 1800s and had several unique features mentioned by the speaker.", questions: [] },
+  part2: { passage: "Part 2 passage. This one is longer and composed of dialogues and opinions. Two speakers discuss opinions about a play and aspects of the production including set, lighting, costume and music.", questions: [] },
+  part3: { passage: "Boat trip round Tasmania: The passage describes logistics, number of people allowed, boat colours, lunchbox options and litter rules.", questions: [] },
+  part4: { passage: "Part 4 — extended lecture style passage. This contains facts, dates, and comparisons. Use it to answer detail questions and map-matching tasks.", questions: [] }
 };
 
-/* App state */
-let QUESTIONS = { part1:[], part2:[], part3:[], meta:{} };
-let APP = { answers: {part1:[], part2:[], part3:[]}, scores: {part1:[], part2:[], part3:[]}, index:{part1:0,part2:0,part3:0}, running:false };
-
-/* load/save */
-function loadQuestions(){
+/* load from storage or set sample */
+function loadData(){
   try{
     const raw = localStorage.getItem(QUESTIONS_KEY);
-    if(!raw){ QUESTIONS = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS)); return; }
-    const parsed = JSON.parse(raw);
-    QUESTIONS.part1 = (parsed.part1||[]).map(it=>({ text: it.text||'', audioData: it.audioData||null, sampleAnswer: it.sampleAnswer||'' }));
-    QUESTIONS.part2 = (parsed.part2||[]).map(it=>({ text: it.text||'', audioData: it.audioData||null, sampleAnswer: it.sampleAnswer||'' }));
-    QUESTIONS.part3 = (parsed.part3||[]).map(it=>({ text: it.text||'', audioData: it.audioData||null, sampleAnswer: it.sampleAnswer||'' }));
-    QUESTIONS.meta = parsed.meta || { updatedAt: Date.now() };
-  }catch(e){
-    console.warn('loadQuestions error', e);
-    QUESTIONS = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
+    if(!raw){ DATA = JSON.parse(JSON.stringify(DEFAULT)); seedSampleQuestions(); return; }
+    DATA = JSON.parse(raw);
+    // ensure structure
+    ['part1','part2','part3','part4'].forEach(k=>{ if(!DATA[k]) DATA[k] = JSON.parse(JSON.stringify(DEFAULT[k])); if(!DATA[k].questions) DATA[k].questions = []; });
+    // if no questions, seed samples
+    if(DATA.part1.questions.length === 0) seedSampleQuestions();
+  }catch(e){ console.warn(e); DATA = JSON.parse(JSON.stringify(DEFAULT)); seedSampleQuestions(); }
+}
+
+/* small sample seeding to ensure 10 Q each if absent */
+function seedSampleQuestions(){
+  // if dashboard created data, don't override. If empty create sample mix
+  if(!DATA.part1.questions || DATA.part1.questions.length===0){
+    DATA.part1.questions = [
+      {type:'multi', text:'Which TWO features of the lighthouse does Lou mention?', choices:['why it was built','who built it','how long it took to build','who staffed it','what it was built with'], answer:[]},
+      {type:'radio', text:'What colour is the lighthouse?', choices:['red','white','green'], answer:null},
+      {type:'radio', text:'Is the lighthouse open to visitors?', choices:['Yes','No','Some days'], answer:null},
+      {type:'radio', text:'What is the keeper\'s name mentioned?', choices:['John','Lou','Marry'], answer:null},
+      {type:'radio', text:'How often is the light maintained?', choices:['daily','monthly','yearly'], answer:null},
+      {type:'radio', text:'What material used was dominant?', choices:['stone','wood','metal'], answer:null},
+      {type:'radio', text:'Which view is highlighted?', choices:['sea view','garden view','mountain view'], answer:null},
+      {type:'radio', text:'Who repaired the lantern?', choices:['crew','volunteers','government'], answer:null},
+      {type:'radio', text:'When was it restored?', choices:['1990s','2000s','2010s'], answer:null},
+      {type:'radio', text:'What was the original fuel?', choices:['oil','electricity','gas'], answer:null}
+    ];
+  }
+  if(!DATA.part2.questions || DATA.part2.questions.length===0){
+    DATA.part2.questions = [
+      {type:'opinion', text:'Opinions', choices:['They both expected this to be more traditional.','They both thought this was original.','They agree this created the right atmosphere.','They agree this was a major strength.','They were both disappointed by this.','They disagree about why this was an issue.','They disagree about how this could be improved.'], answer:[]},
+      {type:'select', text:'the set', choices:['modern','traditional','minimal'], answer:null},
+      {type:'select', text:'the lighting', choices:['atmospheric','poor','dazzling'], answer:null},
+      {type:'select', text:'the costume design', choices:['creative','boring','accurate'], answer:null},
+      {type:'select', text:'the music', choices:['supportive','distracting','absent'], answer:null},
+      {type:'select', text:'the actors delivery', choices:['convincing','flat','overacted'], answer:null},
+      {type:'radio', text:'Did they like the play overall?', choices:['Yes','No','Mixed'], answer:null},
+      {type:'radio', text:'Was it longer than expected?', choices:['Yes','No','Shorter'], answer:null},
+      {type:'radio', text:'Would they recommend it?', choices:['Yes','No','Maybe'], answer:null},
+      {type:'radio', text:'Would they go again?', choices:['Yes','No','Only if invited'], answer:null}
+    ];
+  }
+  if(!DATA.part3.questions || DATA.part3.questions.length===0){
+    DATA.part3.questions = [
+      {type:'radio', text:'What is the maximum number of people who can stand on each side of the boat?', choices:['9','15','18'], answer:null},
+      {type:'radio', text:'What colour are the tour boats?', choices:['dark red','jet black','light green'], answer:null},
+      {type:'radio', text:'Which lunchbox is suitable for someone who doesn\'t eat meat or fish?', choices:['Lunchbox1','Lunchbox2','Lunchbox3'], answer:null},
+      {type:'radio', text:'What should people do with their litter?', choices:['take it home','hand it to staff','put it in bins'], answer:null},
+      {type:'radio', text:'How long is the trip?', choices:['2 hours','3 hours','4 hours'], answer:null},
+      {type:'radio', text:'Is safety briefing required?', choices:['Yes','No','Optional'], answer:null},
+      {type:'radio', text:'Where do they meet?', choices:['pier A','station','market'], answer:null},
+      {type:'radio', text:'What is provided?', choices:['life jackets','blankets','sunglasses'], answer:null},
+      {type:'radio', text:'What is the main target audience?', choices:['families','solo travellers','backpackers'], answer:null},
+      {type:'radio', text:'Is booking needed?', choices:['Yes','No','Sometimes'], answer:null}
+    ];
+  }
+  if(!DATA.part4.questions || DATA.part4.questions.length===0){
+    DATA.part4.questions = [
+      {type:'radio', text:'Main topic of lecture?', choices:['History of trade','Maritime technology','Art movement'], answer:null},
+      {type:'radio', text:'Which century is emphasized?', choices:['18th','19th','20th'], answer:null},
+      {type:'radio', text:'Which country is mentioned most?', choices:['UK','France','Spain'], answer:null},
+      {type:'radio', text:'What system was introduced?', choices:['steam','electric','diesel'], answer:null},
+      {type:'radio', text:'Primary benefit noted?', choices:['speed','cost','safety'], answer:null},
+      {type:'radio', text:'Who funded the project?', choices:['government','private','charity'], answer:null},
+      {type:'radio', text:'How was the data collected?', choices:['surveys','archives','fieldwork'], answer:null},
+      {type:'radio', text:'Which evidence is most convincing?', choices:['photographs','reports','testimonials'], answer:null},
+      {type:'radio', text:'What challenge remains?', choices:['funding','training','infrastructure'], answer:null},
+      {type:'radio', text:'Lecture tone is', choices:['critical','neutral','celebratory'], answer:null}
+    ];
   }
 }
-function loadApp(){
-  try{
-    const raw = localStorage.getItem(APP_KEY);
-    if(!raw){
-      APP = { answers: {part1:[],part2:[],part3:[]}, scores:{part1:[],part2:[],part3:[]}, index:{part1:0,part2:0,part3:0}, running:false };
-      ensureAppArrays(); return;
-    }
-    const parsed = JSON.parse(raw);
-    APP = parsed;
-    ensureAppArrays();
-  }catch(e){
-    console.warn('loadApp error', e);
-    APP = { answers: {part1:[],part2:[],part3:[]}, scores:{part1:[],part2:[],part3:[]}, index:{part1:0,part2:0,part3:0}, running:false };
-    ensureAppArrays();
-  }
-}
-function ensureAppArrays(){
-  ['part1','part2','part3'].forEach(part=>{
-    APP.answers[part] = APP.answers[part] || [];
-    APP.scores[part] = APP.scores[part] || [];
-    while(APP.answers[part].length < QUESTIONS[part].length) APP.answers[part].push('');
-    APP.answers[part].length = QUESTIONS[part].length;
-    while(APP.scores[part].length < QUESTIONS[part].length) APP.scores[part].push(null);
-    APP.scores[part].length = QUESTIONS[part].length;
-    APP.index[part] = Math.min(APP.index[part]||0, Math.max(0, QUESTIONS[part].length-1));
-  });
-}
-function saveApp(){ try{ localStorage.setItem(APP_KEY, JSON.stringify(APP)); }catch(e){ console.warn('saveApp', e); }}
 
-/* UI refs */
-const mainPanel = document.getElementById('mainPanel');
-const startTestBtn = document.getElementById('startTest');
-const stopTestBtn = document.getElementById('stopTest');
-const openDashboard = document.getElementById('openDashboard');
-const reloadBtn = document.getElementById('reloadBtn');
-const partSelect = document.getElementById('partSelect');
-const timePerQInput = document.getElementById('timePerQ');
-const autoAdvanceCheckbox = document.getElementById('autoAdvance');
-const listenPctInput = document.getElementById('listenPct');
-const avgScoreEl = document.getElementById('avgScore');
-const exportCSVBtn = document.getElementById('exportCSV');
+/* UI state: current part and question index */
+let currentPart = 'part1';
+let qIndex = 0;
 
-let playbackAudio = null;
-let playbackInterval = null;
-let playedPct = 0;
-let questionTimer = null;
-
-/* render current question for selected part (ketma-ket one-by-one) */
-function render(){
-  loadQuestions();
-  loadApp();
-  avgScoreEl.textContent = computeAvg();
-
-  const part = partSelect.value || 'part1';
-  const idx = APP.index[part] || 0;
-  if(QUESTIONS[part].length === 0){
-    mainPanel.innerHTML = `<div class="qcard"><div class="qtitle">No questions in ${part}</div><div class="small">Use Dashboard to add questions</div></div>`; return;
-  }
-  const q = QUESTIONS[part][idx];
-  mainPanel.innerHTML = '';
-
-  const card = document.createElement('div'); card.className='qcard animated';
-  card.innerHTML = `
-    <div class="qhead">
-      <div>
-        <div class="small">Part: <strong>${part}</strong> — Question ${idx+1} / ${QUESTIONS[part].length}</div>
-        <div class="qtitle" id="qTitle">${escapeHtml(q.text)}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
-        <div class="small faded">Saved: <span id="savedMark">${APP.answers[part][idx] ? 'Yes' : 'No'}</span></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <div id="playBtn" class="playbtn" title="Play / Pause">▶</div>
-          <div class="small">Listen required: <strong id="needPct">${listenPctInput.value}%</strong></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="progress"><div id="progressBar" class="bar"></div></div>
-
-    <div class="answer-row">
-      <textarea id="answerArea" placeholder="Write your answer...">${escapeHtml(APP.answers[part][idx]||'')}</textarea>
-      <div class="side">
-        <div class="note">Tip: Ctrl+Enter — saqlash. Auto-mode: vaqt tugaganda avtomatik keyingi savolga oʻtadi (agar yoqilgan).</div>
-        <div class="small">Sample answer: <strong id="sampleAns">${escapeHtml(q.sampleAnswer||'—')}</strong></div>
-        <div class="controls-row">
-          <button id="saveBtn" class="btn">Save</button>
-          <button id="checkBtn" class="btn primary">Check</button>
-          <button id="nextBtn" class="btn">Next</button>
-        </div>
-        <div class="small">Score: <span id="scoreView">${APP.scores[part][idx]!==null?APP.scores[part][idx]:'—'}</span></div>
-      </div>
-    </div>
-
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div class="pager">
-        <button id="prevBtn" class="btn">⟨ Prev</button>
-        <div class="chip">Part: ${part} — Q ${idx+1}/${QUESTIONS[part].length}</div>
-        <button id="gotoBtn" class="btn">Go to part start</button>
-      </div>
-      <div class="small">Questions updated: <span id="qUpdated">${QUESTIONS.meta && QUESTIONS.meta.updatedAt ? new Date(QUESTIONS.meta.updatedAt).toLocaleString() : '(never)'}</span></div>
-    </div>
-  `;
-  mainPanel.appendChild(card);
-
-  // wire
-  const playBtn = document.getElementById('playBtn');
-  const progressBar = document.getElementById('progressBar');
-  const answerArea = document.getElementById('answerArea');
-  const saveBtn = document.getElementById('saveBtn');
-  const checkBtn = document.getElementById('checkBtn');
-  const nextBtn = document.getElementById('nextBtn');
-  const prevBtn = document.getElementById('prevBtn');
-  const scoreView = document.getElementById('scoreView');
-  const savedMark = document.getElementById('savedMark');
-  const needPctEl = document.getElementById('needPct');
-
-  let requiredPct = parseInt(listenPctInput.value || '70', 10);
-  needPctEl.textContent = requiredPct + '%';
-
-  // setup audio or TTS
-  if(playbackAudio){ try{ playbackAudio.pause(); }catch(e){} playbackAudio = null; }
-  playedPct = 0;
-  progressBar.style.width = '0%';
-  playBtn.classList.remove('playing');
-
-  if(q.audioData){
-    playbackAudio = new Audio(q.audioData);
-    playbackAudio.preload = 'auto';
-    playbackAudio.onended = () => { playBtn.classList.remove('playing'); progressBar.style.width = '100%'; playedPct = 100; updateControls(); };
-    playbackAudio.ontimeupdate = () => {
-      if(playbackAudio.duration){
-        const pct = Math.round((playbackAudio.currentTime / playbackAudio.duration) * 100);
-        progressBar.style.width = pct + '%';
-        playedPct = Math.max(playedPct, pct);
-        updateControls();
-      }
-    };
+/* audio playback using SpeechSynthesis */
+function playPassage(part){
+  const passage = DATA[part].passage || '';
+  if(!passage){ alert('No passage text found.'); return; }
+  if('speechSynthesis' in window){
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(passage);
+    u.lang = 'en-US';
+    // voice selection: try default
+    window.speechSynthesis.speak(u);
+    u.onend = ()=> { showToast('Passage finished'); };
   } else {
-    playbackAudio = null;
-    // TTS fallback uses artificial progress on play
+    alert('SpeechSynthesis not supported in this browser.');
+  }
+}
+
+/* render single question view */
+function render(){
+  // update nav pills
+  document.querySelectorAll('.pill').forEach(p=> p.classList.toggle('active', p.dataset.part === currentPart));
+  // ensure qIndex valid
+  const count = DATA[currentPart].questions.length;
+  if(qIndex < 0) qIndex = 0;
+  if(qIndex >= count) qIndex = count - 1;
+  const q = DATA[currentPart].questions[qIndex];
+  const totalAnswered = countAnswered();
+  document.getElementById('progressCount').textContent = `${totalAnswered} / ${totalTotalQuestions()}`;
+
+  // create HTML for question types
+  const html = document.createElement('div');
+  html.className = 'question-box';
+  let inner = '';
+  inner += `<div style="display:flex;justify-content:space-between;align-items:center">
+    <div><div class="q-title">${escapeHtml(currentPart.toUpperCase())}</div><div class="small">Question ${qIndex+1} / ${count}</div></div>
+    <div><button id="playPassBtn" class="btn ghost">Play Passage</button></div>
+  </div>`;
+  inner += `<div style="margin-top:12px"><strong>${escapeHtml(q.text)}</strong></div>`;
+
+  // choices UI
+  inner += `<div class="choices" id="choicesArea"></div>`;
+  inner += `<div class="wave" style="display:none"><canvas id="wave"></canvas></div>`;
+  inner += `<div class="question-nav"> <button id="answerSkip" class="btn ghost">Skip</button> </div>`;
+
+  html.innerHTML = inner;
+  const area = document.getElementById('contentArea');
+  area.innerHTML = '';
+  area.appendChild(html);
+
+  document.getElementById('playPassBtn').addEventListener('click', ()=> { playPassage(currentPart); animatePlay(); });
+
+  const choicesArea = document.getElementById('choicesArea');
+
+  if(q.type === 'radio'){
+    q.choices.forEach((c, i)=>{
+      const id = `c_${i}`;
+      const div = document.createElement('div'); div.className='choice';
+      div.innerHTML = `<input type="radio" name="choice" id="${id}" class="radio"> <label for="${id}">${escapeHtml(c)}</label>`;
+      choicesArea.appendChild(div);
+      div.querySelector('input').addEventListener('change', ()=>{
+        DATA[currentPart].questions[qIndex].answer = c;
+        saveProgress();
+      });
+      // restore selection
+      if(q.answer === c) div.querySelector('input').checked = true;
+    });
+  } else if(q.type === 'multi'){
+    q.choices.forEach((c, i)=>{
+      const id = `m_${i}`;
+      const div = document.createElement('div'); div.className='choice';
+      div.innerHTML = `<input type="checkbox" id="${id}" class="checkbox"> <label for="${id}">${escapeHtml(c)}</label>`;
+      choicesArea.appendChild(div);
+      div.querySelector('input').addEventListener('change', ()=>{
+        const arr = DATA[currentPart].questions[qIndex].answer || [];
+        if(div.querySelector('input').checked) { arr.push(c); } else { const idx = arr.indexOf(c); if(idx>-1) arr.splice(idx,1); }
+        DATA[currentPart].questions[qIndex].answer = arr;
+        saveProgress();
+      });
+      if(Array.isArray(q.answer) && q.answer.indexOf(c) !== -1) div.querySelector('input').checked = true;
+    });
+  } else if(q.type === 'opinion'){
+    // render list of bullet options with checkboxes (like image)
+    const box = document.createElement('div'); box.style.border = '1px solid #e6e6e6'; box.style.padding = '10px'; box.style.background='#fafafa';
+    const ul = document.createElement('ul');
+    ul.style.paddingLeft = '18px';
+    q.choices.forEach((c,i)=>{
+      const li = document.createElement('li');
+      const id = `op_${i}`;
+      li.innerHTML = `<input type="checkbox" id="${id}"> <label for="${id}">${escapeHtml(c)}</label>`;
+      li.style.marginBottom='8px';
+      ul.appendChild(li);
+      li.querySelector('input').addEventListener('change', ()=>{
+        const arr = DATA[currentPart].questions[qIndex].answer || [];
+        if(li.querySelector('input').checked) arr.push(c); else { const idx = arr.indexOf(c); if(idx>-1) arr.splice(idx,1); }
+        DATA[currentPart].questions[qIndex].answer = arr;
+        saveProgress();
+      });
+      if(Array.isArray(q.answer) && q.answer.indexOf(c)!==-1) li.querySelector('input').checked = true;
+    });
+    box.appendChild(ul); choicesArea.appendChild(box);
+  } else if(q.type === 'select'){
+    // dropdown
+    const sel = document.createElement('select'); sel.className='select';
+    const defaultOpt = document.createElement('option'); defaultOpt.value=''; defaultOpt.textContent='Select...'; sel.appendChild(defaultOpt);
+    q.choices.forEach(c=>{
+      const opt = document.createElement('option'); opt.value = c; opt.textContent = c; sel.appendChild(opt);
+    });
+    if(q.answer) sel.value = q.answer;
+    sel.addEventListener('change', ()=> { DATA[currentPart].questions[qIndex].answer = sel.value || null; saveProgress(); });
+    choicesArea.appendChild(sel);
   }
 
-  function doPlay(){
-    if(playbackAudio){
-      if(playbackAudio.paused){ playbackAudio.play().catch(e=>console.warn(e)); playBtn.classList.add('playing'); }
-      else { playbackAudio.pause(); playBtn.classList.remove('playing'); }
-    } else {
-      if('speechSynthesis' in window){
-        if(window.__tts){ window.speechSynthesis.cancel(); window.__tts = null; playBtn.classList.remove('playing'); return; }
-        const u = new SpeechSynthesisUtterance(q.text || '');
-        u.lang = 'en-US';
-        window.__tts = u;
-        playBtn.classList.add('playing');
-        let est = Math.max(3, (q.text||'').split(/\s+/).length / 2.2);
-        let elapsed = 0;
-        progressBar.style.width = '0%';
-        const t = setInterval(()=>{ elapsed += 0.25; const pct = Math.min(100, Math.round((elapsed/est)*100)); progressBar.style.width = pct + '%'; playedPct = Math.max(playedPct, pct); updateControls(); if(pct>=100) clearInterval(t); }, 250);
-        u.onend = ()=>{ playBtn.classList.remove('playing'); progressBar.style.width = '100%'; playedPct = 100; window.__tts = null; updateControls(); };
-        window.speechSynthesis.speak(u);
-      } else {
-        alert('No audio and TTS not supported.');
-      }
-    }
-  }
-
-  playBtn.onclick = doPlay;
-  progressBar.parentElement.onclick = doPlay;
-
-  function updateControls(){
-    const allow = (q.audioData ? (playedPct >= requiredPct) : true);
-    saveBtn.disabled = !allow;
-    checkBtn.disabled = !allow;
-    saveBtn.style.opacity = allow ? 1 : 0.5;
-    checkBtn.style.opacity = allow ? 1 : 0.5;
-    if(!allow) savedMark.textContent = 'No (listen first)';
-  }
-
-  updateControls();
-
-  answerArea.addEventListener('input', ()=> {
-    APP.answers[part][idx] = answerArea.value;
-    savedMark.textContent = APP.answers[part][idx] ? 'No (unsaved)' : 'No';
+  // skip button
+  document.getElementById('answerSkip').addEventListener('click', ()=> {
+    // leave answer null/empty
+    navigate(1);
   });
 
-  answerArea.addEventListener('keydown',(e)=>{ if(e.ctrlKey && e.key==='Enter'){ saveBtn.click(); } });
+  // enable prev/next
+  document.getElementById('prevQ').onclick = ()=> navigate(-1);
+  document.getElementById('nextQ').onclick = ()=> navigate(1);
+}
 
-  saveBtn.addEventListener('click', ()=> {
-    if(q.audioData && playedPct < requiredPct){
-      alert(`Iltimos audioni kamida ${requiredPct}% tinglang (hozir: ${playedPct}%).`);
+/* navigation */
+function navigate(delta){
+  // move within same part or jump between parts
+  const count = DATA[currentPart].questions.length;
+  qIndex += delta;
+  if(qIndex < 0){
+    // go to previous part
+    if(currentPart === 'part1'){ qIndex = 0; } else if(currentPart === 'part2'){ currentPart = 'part1'; qIndex = DATA.part1.questions.length-1; }
+    else if(currentPart === 'part3'){ currentPart = 'part2'; qIndex = DATA.part2.questions.length-1; }
+    else if(currentPart === 'part4'){ currentPart = 'part3'; qIndex = DATA.part3.questions.length-1; }
+  } else if(qIndex >= count){
+    // advance to next part
+    if(currentPart === 'part1'){ currentPart='part2'; qIndex=0; }
+    else if(currentPart === 'part2'){ currentPart='part3'; qIndex=0; }
+    else if(currentPart === 'part3'){ currentPart='part4'; qIndex=0; }
+    else if(currentPart === 'part4'){ // finished all
+      alert('Test tugadi — eksport yoki natijalarni ko‘ring.');
       return;
     }
-    APP.answers[part][idx] = answerArea.value;
-    saveApp();
-    savedMark.textContent = APP.answers[part][idx] ? 'Yes' : 'No';
-    alert('Javob saqlandi.');
-  });
-
-  checkBtn.addEventListener('click', ()=> {
-    if(q.audioData && playedPct < requiredPct){
-      alert(`Iltimos audioni kamida ${requiredPct}% tinglang.`);
-      return;
-    }
-    const user = (answerArea.value||'').trim().toLowerCase();
-    const key = (q.sampleAnswer||'').trim().toLowerCase();
-    let score = 0;
-    if(!user) score = 0;
-    else if(!key) score = 1;
-    else if(user === key) score = 9;
-    else if(user.includes(key)) score = 7;
-    else {
-      const us = user.split(/\s+/), ks = key.split(/\s+/);
-      const shared = us.filter(w=>ks.includes(w)).length;
-      const ratio = shared / Math.max(1, ks.length);
-      score = Math.round(Math.min(8, Math.max(1, ratio*6)));
-    }
-    APP.scores[part][idx] = score;
-    saveApp();
-    scoreView.textContent = score;
-    avgScoreEl.textContent = computeAvg();
-    alert('Natija: ' + score);
-  });
-
-  nextBtn.addEventListener('click', ()=> {
-    if(APP.index[part] < QUESTIONS[part].length - 1){ APP.index[part]++; saveApp(); render(); } else { alert('This is the last question in this part.'); }
-  });
-  prevBtn.addEventListener('click', ()=> {
-    if(APP.index[part] > 0){ APP.index[part]--; saveApp(); render(); } else { alert('This is the first question in this part.'); }
-  });
-  document.getElementById('gotoBtn').addEventListener('click', ()=> { APP.index[part] = 0; saveApp(); render(); });
-
-  // if auto-mode running and this render happened due to auto-advance, start timer for this question
-  if(APP.running){
-    startQuestionTimer();
   }
+  render();
 }
 
-/* Auto test: sequence through parts then questions in each part */
-function startTestSequence(){
-  if(APP.running) return;
-  APP.running = true;
-  saveApp();
-  // set starting point — current selected part & its index
-  runNextInSequence();
-}
-function stopTestSequence(){
-  APP.running = false;
-  saveApp();
-  clearQuestionTimer();
-  if(playbackAudio){ try{ playbackAudio.pause(); }catch(e){} playbackAudio=null; }
-  if(window.__tts){ try{ window.speechSynthesis.cancel(); }catch(e){} window.__tts=null; }
-  alert('Test stopped.');
-}
-function computeAvg(){
-  let total=0,count=0;
-  ['part1','part2','part3'].forEach(part=>{
-    APP.scores[part].forEach(s=>{ if(s!==null && s!==undefined){ total+=s; count++; } });
-  });
-  return count? (total/count).toFixed(1) : '0.0';
+/* save progress locally (transcripts = answers) */
+function saveProgress(){
+  try{ localStorage.setItem(QUESTIONS_KEY+'_ANSWERS', JSON.stringify(DATA)); }catch(e){ console.warn(e); }
+  updateProgressCount();
 }
 
-/* Auto-run helpers */
-function runNextInSequence(){
-  const parts = ['part1','part2','part3'];
-  const selected = partSelect.value || 'part1';
-  // find order: start from selected part then wrap
-  const order = [...parts.slice(parts.indexOf(selected)), ...parts.slice(0, parts.indexOf(selected))];
-  // find first part with remaining questions
-  let found = false;
-  for(let pi=0; pi<order.length && !found; pi++){
-    const part = order[pi];
-    const idx = APP.index[part] || 0;
-    if(idx < QUESTIONS[part].length){
-      // set UI to that part and index
-      partSelect.value = part;
-      render();
-      found = true;
-      break;
-    }
-  }
-  if(!found){
-    // nothing to run
-    APP.running = false; saveApp(); alert('No questions to run.'); return;
-  }
-  // start timer in render via APP.running true
-}
-
-/* Question timer */
-function clearQuestionTimer(){
-  if(questionTimer){ clearTimeout(questionTimer); questionTimer = null; }
-  if(playbackInterval){ clearInterval(playbackInterval); playbackInterval = null; }
-}
-function startQuestionTimer(){
-  clearQuestionTimer();
-  const timePerQ = Math.max(5, parseInt(timePerQInput.value||'60',10));
-  const autoAdvance = !!autoAdvanceCheckbox.checked;
-  const part = partSelect.value || 'part1';
-  const idx = APP.index[part] || 0;
-  // stop any playing audio and start again from beginning to ensure progress tracking
-  try{ if(playbackAudio){ playbackAudio.currentTime = 0; playbackAudio.play().catch(()=>{}); } }catch(e){}
-  // For TTS fallback we already started play when user hits play — auto mode won't force TTS play.
-  let elapsed = 0;
-  playbackInterval = setInterval(()=> {
-    elapsed += 0.5;
-    if(elapsed >= timePerQ){
-      clearQuestionTimer();
-      // if autoAdvance, move next
-      if(autoAdvance){
-        // if last question in this part -> move to next part's first question
-        if(APP.index[part] < QUESTIONS[part].length - 1){
-          APP.index[part] = APP.index[part] + 1;
-        } else {
-          // move to next part
-          const order = ['part1','part2','part3'];
-          const curi = order.indexOf(part);
-          let moved = false;
-          for(let i=1;i<=2;i++){
-            const p2 = order[(curi + i) % 3];
-            if(QUESTIONS[p2].length > 0){
-              APP.index[p2] = Math.min(APP.index[p2] || 0, QUESTIONS[p2].length - 1);
-              partSelect.value = p2;
-              moved = true; break;
-            }
-          }
-          if(!moved){ // no more parts with questions -> stop
-            APP.running = false; saveApp(); alert('Auto test finished.'); render(); return;
-          }
-        }
-        saveApp();
-        render(); // will start timer for new question (if APP.running)
-      } else {
-        alert('Time up for this question.');
-      }
-    }
-  }, 500);
-}
-
-/* CSV export */
-function exportCSV(){
-  loadApp(); loadQuestions();
-  const rows = [];
-  rows.push(['part','index','question','answer','score','sampleAnswer'].join(','));
-  ['part1','part2','part3'].forEach(part=>{
-    QUESTIONS[part].forEach((q,i)=>{
-      const ans = APP.answers[part][i] || '';
-      const sc = APP.scores[part][i]!==null ? APP.scores[part][i] : '';
-      rows.push([part, i+1, csvEsc(q.text), csvEsc(ans), sc, csvEsc(q.sampleAnswer||'')].join(','));
+/* count answered */
+function countAnswered(){
+  let count=0;
+  ['part1','part2','part3','part4'].forEach(k=>{
+    (DATA[k].questions || []).forEach(q=>{
+      if(q.type==='multi' || q.type==='opinion'){ if(Array.isArray(q.answer) && q.answer.length>0) count++; }
+      else { if(q.answer !== null && q.answer !== undefined && q.answer !== '') count++; }
     });
   });
-  const csv = rows.join('\r\n');
-  const blob = new Blob([csv], { type:'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = `listening_answers_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+  return count;
 }
-function csvEsc(s){ if(s==null) s=''; return `"${String(s).replace(/"/g,'""')}"`; }
+function totalTotalQuestions(){ return (DATA.part1.questions.length + DATA.part2.questions.length + DATA.part3.questions.length + DATA.part4.questions.length); }
+function updateProgressCount(){ document.getElementById('progressCount').textContent = `${countAnswered()} / ${totalTotalQuestions()}`; }
 
-/* UI wiring */
-document.getElementById('openDashboard').addEventListener('click', ()=> {
-  const path = window.location.pathname.replace(/[^\/]*$/, '');
-  const url = window.location.origin + path + 'dashboard_listening.html';
-  window.open(url,'_blank');
-});
-document.getElementById('reloadBtn').addEventListener('click', ()=> { loadQuestions(); render(); alert('Questions reloaded.'); });
-startTestBtn.addEventListener('click', ()=> {
-  APP.running = true; saveApp(); runNextInSequence(); render(); alert('Auto test started.'); 
-});
-stopTestBtn.addEventListener('click', ()=> { stopTestSequence(); render(); });
-partSelect.addEventListener('change', ()=> { render(); });
-exportCSVBtn.addEventListener('click', exportCSV);
+/* export CSV */
+function exportCSV(){
+  const rows = [];
+  rows.push(['part','qIndex','question','type','choices','answer']);
+  ['part1','part2','part3','part4'].forEach(part=>{
+    DATA[part].questions.forEach((q,i)=>{
+      rows.push([part, i+1, q.text.replace(/[\n\r]+/g,' '), q.type, (q.choices||[]).join(' | '), Array.isArray(q.answer)? q.answer.join(' | '): (q.answer||'')]);
+    });
+  });
+  const csv = rows.map(r=> r.map(cell=> `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'listening_answers.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
 
-/* Storage event: update when dashboard publishes */
+/* speech synthesis animation (button) */
+function animatePlay(){
+  const btn = document.getElementById('playPass');
+  btn.classList.add('animate-pulse');
+  setTimeout(()=> btn.classList.remove('animate-pulse'), 1500);
+}
+
+/* simple toast */
+function showToast(msg){
+  const el = document.createElement('div'); el.textContent = msg; el.style.position='fixed'; el.style.bottom='18px'; el.style.right='18px';
+  el.style.background='#0652ff'; el.style.color='#fff'; el.style.padding='10px 14px'; el.style.borderRadius='8px'; el.style.boxShadow='0 10px 30px rgba(6,82,255,0.12)';
+  document.body.appendChild(el); setTimeout(()=>{ el.style.transition='opacity .4s'; el.style.opacity='0'; setTimeout(()=>el.remove(),400); }, 1800);
+}
+
+/* nav pills click */
+document.querySelectorAll('.pill').forEach(p=>{
+  p.addEventListener('click', ()=> {
+    currentPart = p.dataset.part; qIndex = 0; render();
+  });
+});
+
+/* Play passage buttons */
+document.getElementById('playPass').addEventListener('click', ()=> { playPassage(currentPart); animatePlay(); });
+document.getElementById('replayPass').addEventListener('click', ()=> { playPassage(currentPart); });
+document.getElementById('exportCSV').addEventListener('click', exportCSV);
+
+/* Auto test: play passage then show first question, with optional per-question timer */
+let autoTimer = null;
+document.getElementById('startAuto').addEventListener('click', ()=> {
+  if(!confirm('Auto Test: Passage will play and you will be moved question-by-question. Tayyor?')) return;
+  playPassage(currentPart);
+  // after passage ends (approx estimate) — use onend: but speechSynthesis Utterance onend used inside playPassage? we can set timeout approx by word count
+  const passage = DATA[currentPart].passage || '';
+  const words = passage.split(/\s+/).length || 100;
+  const est = Math.max(3000, words*200); // rough 200ms per word
+  setTimeout(()=> {
+    qIndex = 0; render();
+    // optional per-question timer: 30s
+    startPerQuestionAuto();
+  }, est+500);
+});
+
+/* per-question auto progression (30s each) */
+function startPerQuestionAuto(){
+  if(autoTimer) clearInterval(autoTimer);
+  let seconds = 30;
+  showToast('Auto mode: each question 30s');
+  autoTimer = setInterval(()=> {
+    seconds--;
+    if(seconds <= 0){
+      // move next
+      navigate(1);
+      seconds = 30;
+    }
+  }, 1000);
+}
+
+/* BroadcastChannel + storage events: when dashboard updates QUESTIONS_KEY, reload DATA */
+try{
+  const bc = new BroadcastChannel('listening_channel');
+  bc.onmessage = (ev)=>{
+    const msg = ev.data;
+    if(msg && (msg.type === 'questions_updated' || msg.type === 'questions_removed')){
+      // reload
+      loadData();
+      render();
+      showToast('Questions updated from Dashboard');
+    }
+  };
+}catch(e){ /* ignore */ }
+
 window.addEventListener('storage', (e)=>{
   if(e.key === QUESTIONS_KEY){
-    loadQuestions();
-    // adjust APP arrays lengths
-    loadApp();
-    ensureAppArrays();
-    saveApp();
-    render();
-    console.info('Questions updated from dashboard.');
+    loadData(); render(); showToast('Questions updated (storage event)');
   }
 });
 
-/* helpers */
+/* init UI and loading */
 function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+function totalTotal() { return totalTotalQuestions(); }
 
-/* startup */
-loadQuestions();
-loadApp();
-ensureAppArrays();
+loadData();
 render();
+updateProgressCount();
 
 </script>
 </body>
